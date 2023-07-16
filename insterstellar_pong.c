@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "draw.h"
 
@@ -18,11 +20,23 @@
 
 #define CANVAS_WIDTH 108
 
+// --------------------------------------------------------------------------------------------- //
+
 void load_main_page(bool enable_terminal);
 
+// --------------------------------------------------------------------------------------------- //
+
 int main() 
-{
+{   
+    int terminal_enable_return_code;
+    if ((terminal_enable_return_code = enable_terminal()) == -1) {
+        printf("[I/O ERROR]: Unable to render terminal. Application had to be terminated.\n"); // TO-DO make new error handling system
+        return EXIT_FAILURE;
+    }
+
+
     load_main_page(true);
+    remove_terminal_data();
     return 0;
 }
 
@@ -46,4 +60,25 @@ void load_main_page(bool enable_terminal)
     if (enable_terminal) {
         render_terminal(CANVAS_WIDTH);
     }
+
+    struct termios old_term, new_term;
+    tcgetattr(STDIN_FILENO, &old_term);
+    new_term = old_term;
+    new_term.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+
+    int c;
+    while ((c = getchar()) != EOF) {
+
+        int save_char_return_code;
+        if ((save_char_return_code = save_char(c)) == -1) {
+            break;
+        }
+
+        if (c == 'q' || c == 'Q') {
+            break;
+        }
+    }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
 }

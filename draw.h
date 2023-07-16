@@ -25,5 +25,8 @@ void put_text(const char* text, px_t line_width, position_t pos);
 void put_space(unsigned int rows_count);
 void render_terminal(px_t line_width);
 void put_horizontal_line(px_t line_width, char symbol);
+int enable_terminal();
+void remove_terminal_data();
+int save_char(char c);
 
 #endif
