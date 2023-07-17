@@ -1,11 +1,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "draw.h"
 
-bool IS_TERMINAL_TURNED_ON = false;
-bool IS_TERMINAL_ENABLED = false;
+// --------------------------------------------------------------------------------------------- //
+
+#define TERMINAL_FILE "user_input.data"
+
+// --------------------------------------------------------------------------------------------- //
+
+
+static bool IS_TERMINAL_TURNED_ON = false;
+static bool IS_TERMINAL_ENABLED = false;
+static unsigned long curr_cursor = 0;
+static unsigned long curr_line_size = 0;
+
+// --------------------------------------------------------------------------------------------- //
 
 void clear_canvas(void)
 {
@@ -40,7 +52,7 @@ void put_text(const char* text, px_t line_width, position_t pos)
     }
 }
 
-void put_space(unsigned int rows_count)
+void put_empty_row(unsigned int rows_count)
 {
     for (unsigned int i = 0; i < rows_count; ++i) {
         putchar('\n');
@@ -49,7 +61,8 @@ void put_space(unsigned int rows_count)
 
 int enable_terminal()
 {
-    FILE* file = fopen("user_input.data", "w");
+    // TO-DO: if the file exists, remove it
+    FILE* file = fopen(TERMINAL_FILE, "w");
     if (file == NULL) {
         return -1;
     }
@@ -59,11 +72,10 @@ int enable_terminal()
     return 0;
 }
 
-void remove_terminal_data()
+int remove_terminal_data()
 {
-    if (remove("user_input.data") == 0) {
-    } else {
-        printf("[I/O Error]: while removing the file 'user_input.data', error occured.\n");
+    if (remove(TERMINAL_FILE) != 0) {
+        return -1;
     }
 
     IS_TERMINAL_TURNED_ON = false;
@@ -72,10 +84,29 @@ void remove_terminal_data()
 
 int save_char(char c)
 {
-    FILE* file = fopen("user_input.data", "a");
+    FILE* file = fopen(TERMINAL_FILE, "a");
     if (file == NULL) {
         printf("[I/O Error]: fail to open the file for appending.\n");
         return -1;
+    }
+
+    if (c == 127) {
+
+        if (curr_cursor > 0 && curr_line_size > 0) {
+
+            fseek(file, -1, SEEK_END);
+            int truncate_result = ftruncate(fileno(file), ftell(file));
+
+            if (truncate_result != 0) {
+                printf("[I/O Error]: truncating of the file failed.\n");
+                fclose(file);
+                return -1;
+            }
+
+            curr_cursor--; curr_line_size--;
+        }
+
+        return 0;
     }
 
     if (fputc(c, file) == EOF) {
@@ -85,10 +116,14 @@ int save_char(char c)
     }
 
     fclose(file);
+    curr_cursor++; curr_line_size++;
+    if (c == '\n') {
+        curr_line_size = 0;
+    }
     return 0;
 }
 
-void render_terminal(px_t line_width)
+int render_terminal(px_t line_width)
 {
     if (IS_TERMINAL_ENABLED) {
 
@@ -96,8 +131,29 @@ void render_terminal(px_t line_width)
 
         put_horizontal_line(line_width, '=');
         put_text("|| > ", line_width, LEFT);
-        put_text("||\n", line_width - 4, RIGHT);
+
+        int buffer = curr_line_size;
+        if (buffer > 100) {
+            buffer = 100;
+        }
+
+        char line[buffer];
+        FILE* file = fopen(TERMINAL_FILE, "rb");
+        if (file == NULL) {
+            printf("[I/O Error]: opening of the file failed.\n");
+            return -1;
+        }
+
+        fseek(file, curr_cursor - curr_line_size, SEEK_SET);
+        size_t bytes_read = fread(&line, sizeof(char), buffer, file);
+        line[buffer] = '\0';
+        printf("%s", line);
+        
+        fclose(file);
+        put_text("||\n", line_width - 4 - buffer, RIGHT);
         put_horizontal_line(line_width, '=');
+
+        return 0;
     }
 }
 
