@@ -94,7 +94,7 @@ int remove_terminal_data()
     IS_TERMINAL_ENABLED = false;
 }
 
-int save_char(char c)
+int save_char(char c, char **command)
 {
     FILE* file = fopen(TERMINAL_FILE, "a");
     if (file == NULL) {
@@ -140,6 +140,15 @@ int save_char(char c)
         }
 
         char *line = get_last_line(buffer_size);
+
+        command = malloc(strlen(line) + 1);
+        if (command == NULL) {
+            resolve_error(MEM_ALOC_FAILURE);
+            free(line);
+            fclose(file);
+        }
+
+        strcpy(*command, line);
 
         curr_line_size = 0;
         free(line);

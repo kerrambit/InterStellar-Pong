@@ -16,10 +16,12 @@
 
 #include "draw.h"
 #include "errors.h"
+#include "utils.h"
 
 // --------------------------------------------------------------------------------------------- //
 
 #define CANVAS_WIDTH 108
+#define CANVAS_HEIGHT 22
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -48,14 +50,16 @@ int main()
     int c;
     while ((c = getchar()) != EOF) {
 
-        int save_char_return_code;
-        if ((save_char_return_code = save_char(c)) == -1) {
+        char *command = NULL;
+        if (save_char(c, &command) == -1) {
             break;
         }
 
-        if (c == 'q' || c == 'Q') {
+        if (STR_EQ(command, "q")) {
             break;
         }
+
+        free(command);
 
         if (load_main_page(true) == -1) {
             break;
@@ -72,6 +76,13 @@ int main()
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief 
+ * 
+ * @param display_terminal 
+ * @note Minimal height of main page is 12 pixels.
+ * @return int 
+ */
 static int load_main_page(bool display_terminal)
 {
     const char* GAME_LOGO = ".___        __                _________ __         .__  .__                 __________                      \n"
@@ -80,14 +91,16 @@ static int load_main_page(bool display_terminal)
                             "|   |   |  \\  | \\  ___/|  | \\/        \\|  | \\  ___/|  |_|  |__/ __ \\|  | \\/  |    |  (  <_> )   |  \\/ /_/  >\n"
                             "|___|___|  /__|  \\___  >__| /_______  /|__|  \\___  >____/____(____  /__|     |____|   \\____/|___|  /\\___  / \n"
                             "         \\/          \\/             \\/           \\/               \\/                             \\//_____/  "
-                            "\n\n\n\n";
+                            "\n";
 
     clear_canvas();
+    put_empty_row(1);
     put_text(GAME_LOGO, CANVAS_WIDTH, LEFT);
+    put_empty_row(4);
     put_text("PLAY [P]\n", CANVAS_WIDTH, CENTER);
     put_text("ABOUT [A]\n", CANVAS_WIDTH, CENTER);
     put_text("QUIT [Q]\n", CANVAS_WIDTH, CENTER);
-    put_empty_row(4);
+    put_empty_row(5);
 
     if (display_terminal) {
         if (render_terminal(CANVAS_WIDTH) == -1) {
