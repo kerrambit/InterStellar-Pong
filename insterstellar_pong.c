@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "draw.h"
+#include "errors.h"
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -29,16 +30,17 @@ static struct termios init_termios();
 
 int main() 
 {   
-    int terminal_enable_return_code;
-    if ((terminal_enable_return_code = enable_terminal()) == -1) {
-        printf("[I/O ERROR]: unable to render terminal. Application had to be terminated.\n"); // TO-DO make new error handling system
+    if (enable_terminal() == -1) {
+        resolve_error(BROKEN_TERMINAL);
         return EXIT_FAILURE;
     }
 
     struct termios old_term = init_termios();
 
     if (load_main_page(true) == -1) {
-        remove_terminal_data();
+        if (remove_terminal_data() == -1) {
+            resolve_error(FAILURE_OF_REMOVING_FILE);
+        }
         tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
         return EXIT_FAILURE;
     }
@@ -56,15 +58,14 @@ int main()
         }
 
         if (load_main_page(true) == -1) {
-            remove_terminal_data();
-            return EXIT_FAILURE;
+            break;
         }
     }
 
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
 
     if (remove_terminal_data() == -1) {
-        printf("[I/O Error]: removing the file 'user_input.data' failed.\n");
+        resolve_error(FAILURE_OF_REMOVING_FILE);
         return EXIT_FAILURE;
     }
 
@@ -93,6 +94,8 @@ static int load_main_page(bool display_terminal)
             return -1;
         }
     }
+
+    return 0;
 }
 
 static struct termios init_termios()

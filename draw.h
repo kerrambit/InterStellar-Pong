@@ -22,6 +22,7 @@ typedef enum {
 
 void clear_canvas(void);
 void put_text(const char* text, px_t line_width, position_t pos);
+void write_text(const char* text);
 void put_empty_row(unsigned int rows_count);
 int render_terminal(px_t line_width);
 void put_horizontal_line(px_t line_width, char symbol);

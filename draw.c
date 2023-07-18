@@ -4,10 +4,12 @@
 #include <unistd.h>
 
 #include "draw.h"
+#include "errors.h"
 
 // --------------------------------------------------------------------------------------------- //
 
 #define TERMINAL_FILE "user_input.data"
+#define SPACE 127
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -52,6 +54,11 @@ void put_text(const char* text, px_t line_width, position_t pos)
     }
 }
 
+void write_text(const char* text)
+{
+    printf("%s", text);
+}
+
 void put_empty_row(unsigned int rows_count)
 {
     for (unsigned int i = 0; i < rows_count; ++i) {
@@ -86,40 +93,43 @@ int save_char(char c)
 {
     FILE* file = fopen(TERMINAL_FILE, "a");
     if (file == NULL) {
-        printf("[I/O Error]: fail to open the file for appending.\n");
+        resolve_error(UNOPENABLE_FILE);
         return -1;
     }
 
-    if (c == 127) {
+    if (c == SPACE) {
 
         if (curr_cursor > 0 && curr_line_size > 0) {
 
-            fseek(file, -1, SEEK_END);
-            int truncate_result = ftruncate(fileno(file), ftell(file));
+            if (fseek(file, -1, SEEK_END) != 0) {
+                resolve_error(GENERAL_IO_ERROR);
+                fclose(file);
+                return -1;
+            }
 
-            if (truncate_result != 0) {
-                printf("[I/O Error]: truncating of the file failed.\n");
+            if (ftruncate(fileno(file), ftell(file)) != 0) {
+                resolve_error(GENERAL_IO_ERROR);
                 fclose(file);
                 return -1;
             }
 
             curr_cursor--; curr_line_size--;
         }
-
         return 0;
     }
 
     if (fputc(c, file) == EOF) {
-        printf("[I/O Error]: fail to append the character to the file.\n");
+        resolve_error(CORRUPTED_WRITE_TO_FILE);
         fclose(file);
         return -1;
     }
 
-    fclose(file);
     curr_cursor++; curr_line_size++;
     if (c == '\n') {
         curr_line_size = 0;
     }
+    
+    fclose(file);
     return 0;
 }
 
@@ -140,19 +150,24 @@ int render_terminal(px_t line_width)
         char line[buffer];
         FILE* file = fopen(TERMINAL_FILE, "rb");
         if (file == NULL) {
-            printf("[I/O Error]: opening of the file failed.\n");
+            resolve_error(UNOPENABLE_FILE);
             return -1;
         }
 
-        fseek(file, curr_cursor - curr_line_size, SEEK_SET);
-        size_t bytes_read = fread(&line, sizeof(char), buffer, file);
+        if (fseek(file, curr_cursor - curr_line_size, SEEK_SET) != 0) {
+            resolve_error(GENERAL_IO_ERROR);
+            fclose(file);
+            return -1;
+        }
+
+        fread(&line, sizeof(char), buffer, file);
         line[buffer] = '\0';
-        printf("%s", line);
-        
-        fclose(file);
+
+        write_text(line);
         put_text("||\n", line_width - 4 - buffer, RIGHT);
         put_horizontal_line(line_width, '=');
 
+        fclose(file);
         return 0;
     }
 }
