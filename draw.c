@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "draw.h"
 #include "errors.h"
@@ -9,7 +10,7 @@
 // --------------------------------------------------------------------------------------------- //
 
 #define TERMINAL_FILE "user_input.data"
-#define SPACE 127
+#define BACKSPACE 127
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -18,6 +19,10 @@ static bool IS_TERMINAL_TURNED_ON = false;
 static bool IS_TERMINAL_ENABLED = false;
 static unsigned long curr_cursor = 0;
 static unsigned long curr_line_size = 0;
+
+// --------------------------------------------------------------------------------------------- //
+
+static char* get_last_line(int buffer_size);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -97,7 +102,7 @@ int save_char(char c)
         return -1;
     }
 
-    if (c == SPACE) {
+    if (c == BACKSPACE) {
 
         if (curr_cursor > 0 && curr_line_size > 0) {
 
@@ -112,9 +117,10 @@ int save_char(char c)
                 fclose(file);
                 return -1;
             }
-
             curr_cursor--; curr_line_size--;
         }
+
+        fclose(file);
         return 0;
     }
 
@@ -125,10 +131,20 @@ int save_char(char c)
     }
 
     curr_cursor++; curr_line_size++;
+
     if (c == '\n') {
+        
+        int buffer_size = curr_line_size;
+        if (buffer_size > 100) {
+            buffer_size = 100;
+        }
+
+        char *line = get_last_line(buffer_size);
+
         curr_line_size = 0;
+        free(line);
     }
-    
+
     fclose(file);
     return 0;
 }
@@ -139,37 +155,58 @@ int render_terminal(px_t line_width)
 
         IS_TERMINAL_TURNED_ON = true;
 
-        put_horizontal_line(line_width, '=');
-        put_text("|| > ", line_width, LEFT);
-
-        int buffer = curr_line_size;
-        if (buffer > 100) {
-            buffer = 100;
-        }
-
-        char line[buffer];
         FILE* file = fopen(TERMINAL_FILE, "rb");
         if (file == NULL) {
             resolve_error(UNOPENABLE_FILE);
             return -1;
         }
 
-        if (fseek(file, curr_cursor - curr_line_size, SEEK_SET) != 0) {
-            resolve_error(GENERAL_IO_ERROR);
-            fclose(file);
-            return -1;
+        int buffer_size = curr_line_size;
+        if (buffer_size > 100) {
+            buffer_size = 100;
         }
 
-        fread(&line, sizeof(char), buffer, file);
-        line[buffer] = '\0';
+        char *line = get_last_line(buffer_size);
 
+        put_horizontal_line(line_width, '=');
+        put_text("|| > ", line_width, LEFT);
         write_text(line);
-        put_text("||\n", line_width - 4 - buffer, RIGHT);
+        put_text("||\n", line_width - 4 - buffer_size, RIGHT);
         put_horizontal_line(line_width, '=');
 
         fclose(file);
+        free(line);
         return 0;
     }
+}
+
+static char* get_last_line(int buffer_size)
+{
+    char *line = malloc(buffer_size + 1);
+    if (line == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    FILE* file = fopen(TERMINAL_FILE, "rb");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        free(line);
+        return NULL;
+    }
+
+    if (fseek(file, curr_cursor - curr_line_size, SEEK_SET) != 0) {
+        resolve_error(GENERAL_IO_ERROR);
+        free(line);
+        fclose(file);
+        return NULL;
+    }
+
+    fread(line, sizeof(char), buffer_size, file);
+    line[buffer_size] = '\0';
+
+    fclose(file);
+    return line;
 }
 
 void put_horizontal_line(px_t line_width, char symbol)

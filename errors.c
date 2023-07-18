@@ -18,6 +18,7 @@ void resolve_error(errors_t error)
     case GENERAL_IO_ERROR: PRINT_ERROR_MESS("[I/O Error].");
     case CORRUPTED_WRITE_TO_FILE: PRINT_ERROR_MESS("[I/O Error]: writing to the file failed.");
     case FAILURE_OF_REMOVING_FILE: PRINT_ERROR_MESS("[I/O Error]: removing of the file failed.");
+    case MEM_ALOC_FAILURE: PRINT_ERROR_MESS("[Memory error]: Memory allocation failed.");
     default:
         break;
     }
