@@ -26,13 +26,13 @@
 
 // --------------------------------------------------------------------------------------------- //
 
-static int load_main_page(bool display_terminal);
 static struct termios init_termios();
 
 // --------------------------------------------------------------------------------------------- //
 
 int main() 
 {   
+    // open and enable terminal
     if (enable_terminal() == -1) {
         resolve_error(BROKEN_TERMINAL);
         return EXIT_FAILURE;
@@ -40,7 +40,8 @@ int main()
 
     struct termios old_term = init_termios();
 
-    if (load_main_page(true) == -1) {
+    // try to load and render main page
+    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == -1) {
         if (remove_terminal_data() == -1) {
             resolve_error(FAILURE_OF_REMOVING_FILE);
         }
@@ -50,6 +51,8 @@ int main()
 
     int c;
     page_t current_page = MAIN_PAGE;
+
+    // program while loop
     while ((c = getchar()) != EOF) {
 
         char *command = NULL;
@@ -61,16 +64,14 @@ int main()
         page_t new_page = NO_PAGE;
         if (command != NULL) {
             new_page = find_page(current_page, command);
-            printf("[DEBUG] Curret page %s & choosen page: %s\n", convert_page_2_string(current_page), convert_page_2_string(new_page));
+            if (new_page != NO_PAGE) {
+                current_page = new_page;
+            }
         }
 
         free(command);
 
-        if (new_page == QUIT_WITHOUT_CONFIRMATION_PAGE) {
-            break;
-        }
-
-        if (load_main_page(true) == -1) {
+        if (load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH) == -1) {
             break;
         }
     }
@@ -83,41 +84,6 @@ int main()
     }
 
     return EXIT_SUCCESS;
-}
-
-/**
- * @brief 
- * 
- * @param display_terminal 
- * @note Minimal height of main page is 12 pixels.
- * @return int 
- */
-static int load_main_page(bool display_terminal)
-{
-    const char* GAME_LOGO = ".___        __                _________ __         .__  .__                 __________                      \n"
-                            "|   | _____/  |_  ___________/   _____//  |_  ____ |  | |  | _____ _______  \\______   \\____   ____    ____  \n"
-                            "|   |/    \\   __\\/ __ \\_  __ \\_____  \\\\   __\\/ __ \\|  | |  | \\__  \\\\_  __ \\  |     ___/  _ \\ /    \\  / ___\\ \n"
-                            "|   |   |  \\  | \\  ___/|  | \\/        \\|  | \\  ___/|  |_|  |__/ __ \\|  | \\/  |    |  (  <_> )   |  \\/ /_/  >\n"
-                            "|___|___|  /__|  \\___  >__| /_______  /|__|  \\___  >____/____(____  /__|     |____|   \\____/|___|  /\\___  / \n"
-                            "         \\/          \\/             \\/           \\/               \\/                             \\//_____/  "
-                            "\n";
-
-    // clear_canvas();
-    put_empty_row(1);
-    put_text(GAME_LOGO, CANVAS_WIDTH, LEFT);
-    put_empty_row(4);
-    put_text("PLAY [P]\n", CANVAS_WIDTH, CENTER);
-    put_text("ABOUT [A]\n", CANVAS_WIDTH, CENTER);
-    put_text("QUIT [Q]\n", CANVAS_WIDTH, CENTER);
-    put_empty_row(5);
-
-    if (display_terminal) {
-        if (render_terminal(CANVAS_WIDTH) == -1) {
-            return -1;
-        }
-    }
-
-    return 0;
 }
 
 static struct termios init_termios()
