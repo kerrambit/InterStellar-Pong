@@ -52,11 +52,15 @@ int main()
 
         char *command = NULL;
         if (save_char(c, &command) == -1) {
+            free(command);
             break;
         }
 
-        if (STR_EQ(command, "q")) {
-            break;
+        if (command != NULL) {
+            if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+                free(command);
+                break;
+            }
         }
 
         free(command);

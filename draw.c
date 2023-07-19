@@ -141,11 +141,12 @@ int save_char(char c, char **command)
 
         char *line = get_last_line(buffer_size);
 
-        command = malloc(strlen(line) + 1);
-        if (command == NULL) {
+        *command = malloc(strlen(line) + 1);
+        if (*command == NULL) {
             resolve_error(MEM_ALOC_FAILURE);
             free(line);
             fclose(file);
+            return -1;
         }
 
         strcpy(*command, line);
@@ -191,7 +192,7 @@ int render_terminal(px_t line_width)
 
 static char* get_last_line(int buffer_size)
 {
-    char *line = malloc(buffer_size + 1);
+    char *line = calloc(buffer_size + 1, sizeof(char));
     if (line == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
         return NULL;
