@@ -14,7 +14,7 @@
 
 typedef unsigned int px_t;
 
-typedef enum {
+typedef enum position_t {
     LEFT,
     CENTER,
     RIGHT
@@ -24,10 +24,11 @@ void clear_canvas(void);
 void put_text(const char* text, px_t line_width, position_t pos);
 void write_text(const char* text);
 void put_empty_row(unsigned int rows_count);
-int render_terminal(px_t line_width);
 void put_horizontal_line(px_t line_width, char symbol);
+
+int render_terminal(px_t line_width);
 int enable_terminal();
 int remove_terminal_data();
-int save_char(char c, char **command);
+int process_command(char c, char **command);
 
 #endif

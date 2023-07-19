@@ -94,7 +94,7 @@ int remove_terminal_data()
     IS_TERMINAL_ENABLED = false;
 }
 
-int save_char(char c, char **command)
+int process_command(char c, char **command)
 {
     FILE* file = fopen(TERMINAL_FILE, "a");
     if (file == NULL) {

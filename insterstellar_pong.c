@@ -17,6 +17,7 @@
 #include "draw.h"
 #include "errors.h"
 #include "utils.h"
+#include "page_loader.h"
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -48,22 +49,26 @@ int main()
     }
 
     int c;
+    page_t current_page = MAIN_PAGE;
     while ((c = getchar()) != EOF) {
 
         char *command = NULL;
-        if (save_char(c, &command) == -1) {
+        if (process_command(c, &command) == -1) {
             free(command);
             break;
         }
 
+        page_t new_page = NO_PAGE;
         if (command != NULL) {
-            if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
-                free(command);
-                break;
-            }
+            new_page = find_page(current_page, command);
+            printf("[DEBUG] Curret page %s & choosen page: %s\n", convert_page_2_string(current_page), convert_page_2_string(new_page));
         }
 
         free(command);
+
+        if (new_page == QUIT_WITHOUT_CONFIRMATION_PAGE) {
+            break;
+        }
 
         if (load_main_page(true) == -1) {
             break;
@@ -97,7 +102,7 @@ static int load_main_page(bool display_terminal)
                             "         \\/          \\/             \\/           \\/               \\/                             \\//_____/  "
                             "\n";
 
-    clear_canvas();
+    // clear_canvas();
     put_empty_row(1);
     put_text(GAME_LOGO, CANVAS_WIDTH, LEFT);
     put_empty_row(4);
