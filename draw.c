@@ -73,7 +73,13 @@ void put_empty_row(unsigned int rows_count)
 
 int enable_terminal()
 {
-    // TO-DO: if the file exists, remove it
+    if (access(TERMINAL_FILE, F_OK) == 0) {
+        if (remove(TERMINAL_FILE) != 0) {
+            resolve_error(FAILURE_OF_REMOVING_FILE);
+            return -1;
+        }
+    }
+
     FILE* file = fopen(TERMINAL_FILE, "w");
     if (file == NULL) {
         return -1;
