@@ -20,7 +20,9 @@ typedef enum page_t {
     QUIT_WITHOUT_CONFIRMATION_PAGE,
     ABOUT_PAGE,
     PREGAME_SETTING_PAGE,
-    NOT_FOUND_PAGE
+    NOT_FOUND_PAGE,
+    BACK_PAGE,
+    GAME_PAGE
 } page_t;
 
 page_t find_page(page_t current_page, const char *command);

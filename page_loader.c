@@ -18,6 +18,8 @@ static const char* GAME_LOGO = ".___        __                _________ __      
 
 static int load_main_page(px_t height, px_t width);
 static int load_not_found_page(px_t height, px_t width);
+static int load_pregame_setting_page(px_t height, px_t width);
+static int load_game(px_t height, px_t width);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -34,6 +36,13 @@ page_t find_page(page_t current_page, const char *command)
             return PREGAME_SETTING_PAGE;
         }
 
+    case PREGAME_SETTING_PAGE:
+        if (STR_EQ(command, "s") || STR_EQ(command, "S") || STR_EQ(command, "start") || STR_EQ(command, "START")) {
+            return GAME_PAGE;
+        } else if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
+            return MAIN_PAGE;
+        }
+
     default:
         return NO_PAGE;
     }
@@ -47,6 +56,10 @@ int load_page(page_t page, px_t height, px_t width)
         return load_main_page(height, width);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
         return -1;
+    case PREGAME_SETTING_PAGE:
+        return load_pregame_setting_page(height, width);
+    case GAME_PAGE:
+        return load_game(height, width);
     default:
         return load_not_found_page(height, width);
     }
@@ -89,6 +102,35 @@ static int load_not_found_page(px_t height, px_t width)
     return -1;
 }
 
+static int load_pregame_setting_page(px_t height, px_t width)
+{
+    clear_canvas();
+    put_empty_row(1);
+    put_text(GAME_LOGO, width, LEFT);
+    put_empty_row(4);
+    put_text("[TODO] In working process...\n", width, CENTER);
+    put_empty_row(1);
+    put_text("START GAME [S]\n", width, CENTER);
+    put_text("BACK [B]\n", width, CENTER);
+    put_empty_row(5);
+
+    if (render_terminal(width) == -1) {
+        return -1;
+    }
+    
+    return 0;
+}
+
+static int load_game(px_t height, px_t width)
+{
+    clear_canvas();
+    put_empty_row(4);
+    put_text("Game started\n", width, CENTER);
+    put_text("⬛■█▮\n", width, CENTER);
+
+    return -1;
+}
+
 const char *convert_page_2_string(page_t page)
 {
     switch (page)
@@ -99,6 +141,8 @@ const char *convert_page_2_string(page_t page)
     case ABOUT_PAGE: return "About page";
     case PREGAME_SETTING_PAGE: return "Pregame setting page";
     case NOT_FOUND_PAGE: return "Not found page";
+    case GAME_PAGE: return "Game page";
+    case BACK_PAGE: return "Back page";
     default:
         break;
     }
