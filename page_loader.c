@@ -21,11 +21,11 @@ static const char* GAME_LOGO = ".___        __                _________ __      
 
 // --------------------------------------------------------------------------------------------- //
 
-static int load_main_page(px_t height, px_t width);
-static int load_not_found_page(px_t height, px_t width);
-static int load_pregame_setting_page(px_t height, px_t width);
-static int load_game(px_t height, px_t width);
-static int load_after_game_page(px_t height, px_t width);
+static page_return_code_t load_main_page(px_t height, px_t width);
+static page_return_code_t load_not_found_page(px_t height, px_t width);
+static page_return_code_t load_pregame_setting_page(px_t height, px_t width);
+static page_return_code_t load_game(px_t height, px_t width);
+static page_return_code_t load_after_game_page(px_t height, px_t width);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -61,14 +61,14 @@ page_t find_page(page_t current_page, const char *command)
     }
 }
 
-int load_page(page_t page, px_t height, px_t width)
+page_return_code_t load_page(page_t page, px_t height, px_t width)
 {
     switch (page)
     {
     case MAIN_PAGE:
         return load_main_page(height, width);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
-        return -1;
+        return ERROR;
     case PREGAME_SETTING_PAGE:
         return load_pregame_setting_page(height, width);
     case GAME_PAGE:
@@ -87,7 +87,7 @@ int load_page(page_t page, px_t height, px_t width)
  * @note Minimal height of main page is 12 pixels.
  * @return int 
  */
-static int load_main_page(px_t height, px_t width)
+static page_return_code_t load_main_page(px_t height, px_t width)
 {
     clear_canvas();
     put_empty_row(1);
@@ -99,13 +99,13 @@ static int load_main_page(px_t height, px_t width)
     put_empty_row(5);
 
     if (render_terminal(width) == -1) {
-        return -1;
+        return ERROR;
     }
     
-    return 0;
+    return SUCCES;
 }
 
-static int load_not_found_page(px_t height, px_t width)
+static page_return_code_t load_not_found_page(px_t height, px_t width)
 {
     clear_canvas();
     put_empty_row(1);
@@ -114,10 +114,10 @@ static int load_not_found_page(px_t height, px_t width)
     put_text("Page not found.", width, CENTER);
     put_empty_row(2);
 
-    return -1;
+    return ERROR;
 }
 
-static int load_pregame_setting_page(px_t height, px_t width)
+static page_return_code_t load_pregame_setting_page(px_t height, px_t width)
 {
     clear_canvas();
     put_empty_row(1);
@@ -130,13 +130,13 @@ static int load_pregame_setting_page(px_t height, px_t width)
     put_empty_row(5);
 
     if (render_terminal(width) == -1) {
-        return -1;
+        return ERROR;
     }
     
-    return 0;
+    return SUCCES;
 }
 
-static int load_after_game_page(px_t height, px_t width)
+static page_return_code_t load_after_game_page(px_t height, px_t width)
 {
     clear_canvas();
     put_empty_row(1);
@@ -149,23 +149,23 @@ static int load_after_game_page(px_t height, px_t width)
     put_empty_row(5);
 
     if (render_terminal(width) == -1) {
-        return -1;
+        return ERROR;
     }
     
-    return 0;
+    return SUCCES;
 }
 
-static int load_game(px_t height, px_t width)
+static page_return_code_t load_game(px_t height, px_t width)
 {
     // ⬛■█▮
 
     pixel_buffer_t *pixel_buffer = create_pixel_buffer(height, width);
     if (pixel_buffer == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
-        return -1;
+        return ERROR;
     }
 
-    put_empty_row(4);
+    put_empty_row(2);
 
     bool game_running = true;
     while (game_running) {
@@ -204,7 +204,7 @@ static int load_game(px_t height, px_t width)
     }
 
     release_pixel_buffer(pixel_buffer);
-    return 1;
+    return SUCCESS_GAME;
 }
 
 const char *convert_page_2_string(page_t page)

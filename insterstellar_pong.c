@@ -45,7 +45,7 @@ int main()
     struct termios old_term = init_termios();
 
     // try to load and render main page
-    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == -1) {
+    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == ERROR) {
         if (remove_terminal_data() == -1) {
             resolve_error(FAILURE_OF_REMOVING_FILE);
         }
@@ -80,7 +80,7 @@ int main()
 
         if (load_page_return_code == ERROR) {
             break;
-        } else if (load_page_return_code == GAME_END) {
+        } else if (load_page_return_code == SUCCESS_GAME) {
             current_page = AFTER_GAME_PAGE;
             if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == ERROR) {
                 break;

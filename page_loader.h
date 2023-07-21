@@ -29,11 +29,11 @@ typedef enum page_t {
 typedef enum page_return_code_t {
     ERROR=-1,
     SUCCES,
-    GAME_END
+    SUCCESS_GAME
 } page_return_code_t;
 
 page_t find_page(page_t current_page, const char *command);
 const char *convert_page_2_string(page_t page);
-int load_page(page_t page, px_t height, px_t width);
+page_return_code_t load_page(page_t page, px_t height, px_t width);
 
 #endif
