@@ -10,12 +10,13 @@
 #define ERRORS_H
 
 /**
- * @brief All possible and supported errors in the program.
+ * @brief All supported errors in the application.
  */
 typedef enum errors_t
 {
     NO_ERROR,
     BROKEN_TERMINAL,
+    INACTIVE_TERMINAL,
     UNOPENABLE_FILE,
     GENERAL_IO_ERROR,
     CORRUPTED_WRITE_TO_FILE,
@@ -24,7 +25,7 @@ typedef enum errors_t
 } errors_t;
 
 /**
- * @brief Resolves error code and prints error message to the stderr.
+ * @brief Resolves error code and prints error message to stderr.
  * 
  * @param error error code
  */
