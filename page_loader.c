@@ -155,6 +155,21 @@ static page_return_code_t load_after_game_page(px_t height, px_t width)
     return SUCCES;
 }
 
+static int init_file_desctiptor_monitor()
+{
+    // setup the file descriptor set for select
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(STDIN_FILENO, &read_fds); // add standard input to the set
+
+    // set the timeout for select as non-blocking behavior
+    struct timeval timeout;
+    timeout.tv_sec = 0; timeout.tv_usec = 0;
+
+    // call select to check for input readiness
+    return select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
+}
+
 static page_return_code_t load_game(px_t height, px_t width)
 {
     // ⬛■█▮
@@ -173,24 +188,11 @@ static page_return_code_t load_game(px_t height, px_t width)
         clear_canvas();
         render_graphics(pixel_buffer);
 
-        // Setup the file descriptor set for select
-        fd_set read_fds;
-        FD_ZERO(&read_fds);
-        FD_SET(STDIN_FILENO, &read_fds); // Add standard input (keyboard) to the set
+        int ready_fds = init_file_desctiptor_monitor();
+        if (ready_fds > 0) { // is there is some activity on standart input
 
-        // Set the timeout for select (0 seconds, 0 microseconds for non-blocking behavior)
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 0;
+            int c = getchar();
 
-        // Call select to check for input readiness
-        int ready_fds = select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
-
-        if (ready_fds > 0) {
-            // User input is ready to be read
-            int c = getchar(); // Read the user input
-
-            // Process the user input
             if (c == 'w' || c == 'W') {
                 pixel_buffer->buff[0] = 1;
             } else if (c == 's' || c == 'S') {
