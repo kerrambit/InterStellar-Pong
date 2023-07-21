@@ -18,6 +18,7 @@
 #include "errors.h"
 #include "utils.h"
 #include "page_loader.h"
+#include "terminal.h"
 
 // --------------------------------------------------------------------------------------------- //
 

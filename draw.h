@@ -34,11 +34,6 @@ void write_text(const char* text);
 void put_empty_row(unsigned int rows_count);
 void put_horizontal_line(px_t line_width, char symbol);
 
-int render_terminal(px_t line_width);
-int enable_terminal();
-int remove_terminal_data();
-int process_command(char c, char **command);
-
 pixel_buffer_t *create_pixel_buffer(px_t height, px_t width);
 void release_pixel_buffer(pixel_buffer_t *pixel_buffer);
 void render_graphics(pixel_buffer_t *pixel_buffer);

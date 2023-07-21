@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "draw.h"
 #include "errors.h"
+#include "terminal.h"
 
 // --------------------------------------------------------------------------------------------- //
 
