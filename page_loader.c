@@ -219,6 +219,7 @@ const char *convert_page_2_string(page_t page)
     case NOT_FOUND_PAGE: return "Not found page";
     case GAME_PAGE: return "Game page";
     case BACK_PAGE: return "Back page";
+    case AFTER_GAME_PAGE: return "After game page";
     default:
         break;
     }
