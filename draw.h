@@ -20,7 +20,15 @@ typedef enum position_t {
     RIGHT
 } position_t;
 
+typedef struct pixel_buffer_t {
+    px_t height;
+    px_t width;
+    unsigned char* buff;
+} pixel_buffer_t;
+
 void clear_canvas(void);
+void show_cursor(void);
+void hide_cursor(void);
 void put_text(const char* text, px_t line_width, position_t pos);
 void write_text(const char* text);
 void put_empty_row(unsigned int rows_count);
@@ -30,5 +38,10 @@ int render_terminal(px_t line_width);
 int enable_terminal();
 int remove_terminal_data();
 int process_command(char c, char **command);
+
+pixel_buffer_t *create_pixel_buffer(px_t height, px_t width);
+void release_pixel_buffer(pixel_buffer_t *pixel_buffer);
+void render_graphics(pixel_buffer_t *pixel_buffer);
+// void bind_pixel_buffer(pixel_buffer_t *pixel_buffer, );
 
 #endif

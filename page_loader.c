@@ -1,8 +1,12 @@
+#include <sys/select.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "page_loader.h"
 #include "utils.h"
 #include "draw.h"
+#include "errors.h"
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -20,6 +24,7 @@ static int load_main_page(px_t height, px_t width);
 static int load_not_found_page(px_t height, px_t width);
 static int load_pregame_setting_page(px_t height, px_t width);
 static int load_game(px_t height, px_t width);
+static int load_after_game_page(px_t height, px_t width);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -43,6 +48,13 @@ page_t find_page(page_t current_page, const char *command)
             return MAIN_PAGE;
         }
 
+    case AFTER_GAME_PAGE:
+        if (STR_EQ(command, "n") || STR_EQ(command, "N") || STR_EQ(command, "new game") || STR_EQ(command, "NEW GAME")) {
+            return PREGAME_SETTING_PAGE;
+        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+            return QUIT_WITHOUT_CONFIRMATION_PAGE;
+        }
+
     default:
         return NO_PAGE;
     }
@@ -60,6 +72,8 @@ int load_page(page_t page, px_t height, px_t width)
         return load_pregame_setting_page(height, width);
     case GAME_PAGE:
         return load_game(height, width);
+    case AFTER_GAME_PAGE:
+        return load_after_game_page(height, width);
     default:
         return load_not_found_page(height, width);
     }
@@ -121,14 +135,75 @@ static int load_pregame_setting_page(px_t height, px_t width)
     return 0;
 }
 
-static int load_game(px_t height, px_t width)
+static int load_after_game_page(px_t height, px_t width)
 {
     clear_canvas();
+    put_empty_row(1);
+    put_text(GAME_LOGO, width, LEFT);
     put_empty_row(4);
-    put_text("Game started\n", width, CENTER);
-    put_text("⬛■█▮\n", width, CENTER);
+    put_text("[TODO] Game statistics... in preparetion\n", width, CENTER);
+    put_empty_row(1);
+    put_text("NEW GAME [N]\n", width, CENTER);
+    put_text("QUIT [Q]\n", width, CENTER);
+    put_empty_row(5);
 
-    return -1;
+    if (render_terminal(width) == -1) {
+        return -1;
+    }
+    
+    return 0;
+}
+
+static int load_game(px_t height, px_t width)
+{
+    // ⬛■█▮
+
+    pixel_buffer_t *pixel_buffer = create_pixel_buffer(height, width);
+    if (pixel_buffer == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return -1;
+    }
+
+    put_empty_row(4);
+
+    bool game_running = true;
+    while (game_running) {
+
+        clear_canvas();
+        render_graphics(pixel_buffer);
+
+        // Setup the file descriptor set for select
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(STDIN_FILENO, &read_fds); // Add standard input (keyboard) to the set
+
+        // Set the timeout for select (0 seconds, 0 microseconds for non-blocking behavior)
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+
+        // Call select to check for input readiness
+        int ready_fds = select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
+
+        if (ready_fds > 0) {
+            // User input is ready to be read
+            int c = getchar(); // Read the user input
+
+            // Process the user input
+            if (c == 'w' || c == 'W') {
+                pixel_buffer->buff[0] = 1;
+            } else if (c == 's' || c == 'S') {
+                pixel_buffer->buff[0] = 0;
+            } else if (c == 'q' || c == 'Q') {
+                game_running = false;
+            }
+        }
+
+        usleep(20);
+    }
+
+    release_pixel_buffer(pixel_buffer);
+    return 1;
 }
 
 const char *convert_page_2_string(page_t page)

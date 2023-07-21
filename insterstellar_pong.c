@@ -32,9 +32,12 @@ static struct termios init_termios();
 
 int main() 
 {   
+    hide_cursor();
+
     // open and enable terminal
     if (enable_terminal() == -1) {
         resolve_error(BROKEN_TERMINAL);
+        show_cursor();
         return EXIT_FAILURE;
     }
 
@@ -46,6 +49,7 @@ int main()
             resolve_error(FAILURE_OF_REMOVING_FILE);
         }
         tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+        show_cursor();
         return EXIT_FAILURE;
     }
 
@@ -71,8 +75,15 @@ int main()
 
         free(command);
 
-        if (load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH) == -1) {
+        page_return_code_t load_page_return_code = load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH);
+
+        if (load_page_return_code == ERROR) {
             break;
+        } else if (load_page_return_code == GAME_END) {
+            current_page = AFTER_GAME_PAGE;
+            if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == ERROR) {
+                break;
+            } 
         }
     }
 
@@ -80,9 +91,11 @@ int main()
 
     if (remove_terminal_data() == -1) {
         resolve_error(FAILURE_OF_REMOVING_FILE);
+        show_cursor();
         return EXIT_FAILURE;
     }
 
+    show_cursor();
     return EXIT_SUCCESS;
 }
 

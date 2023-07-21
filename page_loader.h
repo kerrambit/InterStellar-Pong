@@ -22,8 +22,15 @@ typedef enum page_t {
     PREGAME_SETTING_PAGE,
     NOT_FOUND_PAGE,
     BACK_PAGE,
-    GAME_PAGE
+    GAME_PAGE,
+    AFTER_GAME_PAGE
 } page_t;
+
+typedef enum page_return_code_t {
+    ERROR=-1,
+    SUCCES,
+    GAME_END
+} page_return_code_t;
 
 page_t find_page(page_t current_page, const char *command);
 const char *convert_page_2_string(page_t page);
