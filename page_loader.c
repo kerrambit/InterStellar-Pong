@@ -155,7 +155,7 @@ static page_return_code_t load_after_game_page(px_t height, px_t width)
     return SUCCES;
 }
 
-static int init_file_desctiptor_monitor()
+static int init_file_descriptor_monitor()
 {
     // setup the file descriptor set for select
     fd_set read_fds;
@@ -188,7 +188,7 @@ static page_return_code_t load_game(px_t height, px_t width)
         clear_canvas();
         render_graphics(pixel_buffer);
 
-        int ready_fds = init_file_desctiptor_monitor();
+        int ready_fds = init_file_descriptor_monitor();
         if (ready_fds > 0) { // is there is some activity on standart input
 
             int c = getchar();
