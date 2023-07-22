@@ -9,9 +9,18 @@
 
 // --------------------------------------------------------------------------------------------- //
 
+#define SQUARE(num) (num * num)
+
+// --------------------------------------------------------------------------------------------- //
+
 void clear_canvas(void)
 {
     printf("\033[2J\033[H");
+}
+
+void set_cursor_at_beginning_of_canvas(void)
+{
+    printf("\033[H");
 }
 
 void hide_cursor()
@@ -96,10 +105,21 @@ void render_graphics(pixel_buffer_t *pixel_buffer) {
 
             int pixel = pixel_buffer->buff[i * pixel_buffer->width + j];
             
-            if (pixel == 0) {
-                printf(" ");
-            } else if (pixel == 1) {
-                printf("\033[0;97m█\033[0m");
+            switch (pixel) {
+                case BLACK:
+                    printf(" "); break;
+                case WHITE:
+                    printf("\033[0;97m██\033[0m"); break;
+                case RED:
+                    printf("\033[0;91m██\033[0m"); break;
+                case GREEN:
+                    printf("\033[0;92m██\033[0m"); break;
+                case BLUE:
+                    printf("\033[0;94m██\033[0m"); break;
+                case YELLOW:
+                    printf("\033[0;93m██\033[0m"); break;
+                default:
+                    printf(" "); break;
             }
         }
         putchar('\n');
@@ -110,4 +130,108 @@ void release_pixel_buffer(pixel_buffer_t *pixel_buffer)
 {
     free(pixel_buffer->buff);
     free(pixel_buffer);
+}
+
+square_t *create_square(px_t position_x, px_t position_y, px_t side_length, colour_t colour)
+{
+    square_t *square = malloc(sizeof(square_t));
+    if (square == NULL) {
+        return NULL;
+    }
+
+    square->position_x = position_x; square->position_y = position_y; square->side_length = side_length; square->colour = colour;
+    return square;
+}
+
+void release_square(square_t *square)
+{
+    free(square);
+}
+
+void bind_obj_to_pixel_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type)
+{
+    switch (obj_type)
+    {
+    case SQUARE:
+        square_t *square_obj = (square_t*)obj;
+        for (px_t i = square_obj->position_y; i < square_obj->position_y + square_obj->side_length; ++i) {
+            for (px_t j = square_obj->position_x; j < square_obj->position_x + square_obj->side_length; ++j) {
+                pixel_buffer->buff[i * pixel_buffer->width + j] = square_obj->colour;
+            }
+        }
+        break;
+
+    case CIRCLE:
+        circle_t *circle_obj = (circle_t*) obj;
+        const int HEIGHT = 2 * circle_obj->radius;
+        const int WIDTH = 4 * circle_obj->radius;
+
+        for (px_t i = 0; i < HEIGHT + 1; ++i) {
+            for (px_t j = 0 ; j < WIDTH - 1; ++j) {
+
+                int x = j - WIDTH / 2;
+                int y = i - HEIGHT / 2;
+
+                if (SQUARE(x) + SQUARE(y) < SQUARE(circle_obj->radius)) {
+                    int pixel_x = circle_obj->position_x + x;
+                    int pixel_y = circle_obj->position_y + y;
+                    if (pixel_x >= 0 && pixel_x < pixel_buffer->width && pixel_y >= 0 && pixel_y < pixel_buffer->height) {
+                        pixel_buffer->buff[pixel_y * pixel_buffer->width + pixel_x] = circle_obj->colour;
+                    }
+                }
+            }
+        }
+        break;
+
+    case RECTANGLE:
+        rectangle_t *rectangle_obj = (rectangle_t*)obj;
+        for (px_t i = rectangle_obj->position_y; i < rectangle_obj->position_y + rectangle_obj->side_length_2; ++i) {
+            for (px_t j = rectangle_obj->position_x; j < rectangle_obj->position_x + rectangle_obj->side_length_1; ++j) {
+                pixel_buffer->buff[i * pixel_buffer->width + j] = rectangle_obj->colour;
+            }
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
+void reset_pixel_buffer(pixel_buffer_t *pixel_buffer)
+{
+    memset(pixel_buffer->buff, BLACK, (pixel_buffer->height * pixel_buffer->width));
+}
+
+circle_t *create_circle(px_t position_x, px_t position_y, px_t radius, colour_t colour, colour_t fill_colour)
+{
+    circle_t *circle = malloc(sizeof(circle_t));
+    if (circle == NULL) {
+        return NULL;
+    }
+
+    circle->position_x = position_x; circle->position_y = position_y; circle->radius = radius; circle->colour = colour; circle->fill_colour = fill_colour;
+    return circle;
+}
+
+void release_circle(circle_t *circle)
+{
+    free(circle);
+}
+
+rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, colour_t colour)
+{
+    rectangle_t *rectangle = malloc(sizeof(rectangle_t));
+    if (rectangle == NULL) {
+        return NULL;
+    }
+
+    rectangle->position_x = position_x; rectangle->position_y = position_y, rectangle->colour = colour;
+    rectangle->side_length_1 = side_length_1; rectangle->side_length_2 = side_length_2;
+
+    return rectangle;
+}
+
+void release_rectangle(rectangle_t *rectangle)
+{
+    free(rectangle);
 }

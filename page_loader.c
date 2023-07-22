@@ -172,21 +172,27 @@ static int init_file_descriptor_monitor()
 
 static page_return_code_t load_game(px_t height, px_t width)
 {
-    // ⬛■█▮
+    pixel_buffer_t *pixel_buffer1 = create_pixel_buffer(height, width);
+    pixel_buffer_t *pixel_buffer2 = create_pixel_buffer(height, width);
 
-    pixel_buffer_t *pixel_buffer = create_pixel_buffer(height, width);
-    if (pixel_buffer == NULL) {
+    if (pixel_buffer1 == NULL) { resolve_error(MEM_ALOC_FAILURE); return ERROR; }
+
+    if (pixel_buffer2 == NULL) { resolve_error(MEM_ALOC_FAILURE); release_pixel_buffer(pixel_buffer1); return ERROR; }
+
+    rectangle_t *rectangle = create_rectangle(50, 2, 1, 7, YELLOW);
+    if (rectangle == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
         return ERROR;
     }
 
     put_empty_row(2);
+    render_graphics(pixel_buffer1);
 
     bool game_running = true;
     while (game_running) {
 
-        clear_canvas();
-        render_graphics(pixel_buffer);
+        set_cursor_at_beginning_of_canvas();
+        reset_pixel_buffer(pixel_buffer2);
 
         int ready_fds = init_file_descriptor_monitor();
         if (ready_fds > 0) { // is there is some activity on standart input
@@ -194,18 +200,33 @@ static page_return_code_t load_game(px_t height, px_t width)
             int c = getchar();
 
             if (c == 'w' || c == 'W') {
-                pixel_buffer->buff[0] = 1;
+                rectangle->position_y -= 2;
             } else if (c == 's' || c == 'S') {
-                pixel_buffer->buff[0] = 0;
+                rectangle->position_y += 2;
+            } else if (c == 'a' || c == 'A') {
+                rectangle->position_x -= 2;
+            } else if (c == 'd' || c == 'D') {
+                rectangle->position_x += 2;
             } else if (c == 'q' || c == 'Q') {
                 game_running = false;
             }
+
+            bind_obj_to_pixel_buffer(pixel_buffer2, rectangle, RECTANGLE);
+
+            pixel_buffer_t *tmp_buffer = pixel_buffer1;
+            pixel_buffer1 = pixel_buffer2;
+            pixel_buffer2 = tmp_buffer;
+
+            render_graphics(pixel_buffer1);
         }
 
-        usleep(20);
+        usleep(2400);
     }
 
-    release_pixel_buffer(pixel_buffer);
+    release_rectangle(rectangle);
+    release_pixel_buffer(pixel_buffer1);
+    release_pixel_buffer(pixel_buffer2);
+
     return SUCCESS_GAME;
 }
 
