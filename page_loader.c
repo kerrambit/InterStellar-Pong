@@ -170,43 +170,6 @@ static int init_file_descriptor_monitor()
     return select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
 }
 
-void printArrayToFile(const char* filename, pixel_buffer_t *pixel_buffer) {
-
-    FILE* file = fopen(filename, "w");
-
-    if (file == NULL) {
-        printf("Error opening the file.\n");
-        return;
-    }
-
-    for (unsigned int i = 0; i < pixel_buffer->height; ++i) {
-        for (unsigned int j = 0; j < pixel_buffer->width; ++j) {
-
-            int pixel = pixel_buffer->buff[i * pixel_buffer->width + j];
-            
-            switch (pixel) {
-                case BLACK:
-                    fprintf(file, " "); break;
-                case WHITE:
-                    fprintf(file, "1"); break;
-                case RED:
-                    fprintf(file, "2"); break;
-                case GREEN:
-                    fprintf(file, "3"); break;
-                case BLUE:
-                    fprintf(file, "4"); break;
-                case YELLOW:
-                    fprintf(file, "5"); break;
-                default:
-                    fprintf(file, " "); break;
-            }
-        }
-        putchar('\n');
-    }
-
-    fclose(file);
-}
-
 static page_return_code_t load_game(px_t height, px_t width)
 {
     pixel_buffer_t *pixel_buffer1 = create_pixel_buffer(height, width);
