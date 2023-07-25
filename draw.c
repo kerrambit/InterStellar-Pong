@@ -13,6 +13,15 @@
 
 // --------------------------------------------------------------------------------------------- //
 
+unsigned char ID = 0;
+
+// --------------------------------------------------------------------------------------------- //
+
+static ID_t generate_id();
+static colour_t ID_to_colour(scene_t *scene, ID_t ID);
+
+// --------------------------------------------------------------------------------------------- //
+
 void clear_canvas(void)
 {
     printf("\033[2J\033[H");
@@ -90,6 +99,7 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
 
     pixel_buffer->height = height; pixel_buffer->width = width;
     pixel_buffer->buff = calloc(height * width, sizeof(unsigned char));
+    
     if (pixel_buffer->buff == NULL) {
         free(pixel_buffer);
         return NULL;
@@ -98,12 +108,65 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
     return pixel_buffer;
 }
 
-void render_graphics(pixel_buffer_t *pixel_buffer) {
+scene_t *create_scene() {
+
+    scene_t *scene = malloc(sizeof(scene_t));
+    if (scene == NULL) {
+        return NULL;
+    }
+
+    scene->number_of_objects = 0;
+    scene->length_of_arr = 4;
+    scene->scene = malloc(sizeof(rectangle_t*) * scene->length_of_arr);
+
+    if (scene->scene == NULL) {
+        free(scene);
+        return NULL;
+    }
+
+    return scene;
+}
+
+void release_scene(scene_t *scene) {
+
+    if (scene == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < scene->number_of_objects; ++i) {
+        release_rectangle(scene->scene[i]);
+    }
+
+    free(scene->scene);
+    free(scene);
+}
+
+rectangle_t *add_to_scene(scene_t *scene, rectangle_t *object) {
+
+    if (scene == NULL || object == NULL) {
+        return NULL;
+    }
+
+    if (scene->number_of_objects >= scene->length_of_arr) {
+        scene->length_of_arr *= 2;
+        rectangle_t **new_scene_arr = realloc(scene->scene, sizeof(rectangle_t*) * scene->length_of_arr);
+        if (new_scene_arr == NULL) {
+            return NULL;
+        }
+        scene->scene = new_scene_arr;
+    }
+
+    scene->scene[scene->number_of_objects++] = object;
+    return object;
+}
+
+void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene) {
     
     for (unsigned int i = 0; i < pixel_buffer->height; ++i) {
         for (unsigned int j = 0; j < pixel_buffer->width; ++j) {
 
-            int pixel = pixel_buffer->buff[i * pixel_buffer->width + j];
+            int ID = pixel_buffer->buff[i * pixel_buffer->width + j];
+            colour_t pixel = ID_to_colour(scene, ID);
             
             switch (pixel) {
                 case BLACK:
@@ -132,7 +195,7 @@ void release_pixel_buffer(pixel_buffer_t *pixel_buffer)
     free(pixel_buffer);
 }
 
-colour_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type)
+ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type)
 {
     switch (obj_type)
     {
@@ -160,14 +223,15 @@ colour_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj
         break;
 
     case RECTANGLE:
+
         rectangle_t *rectangle_obj = (rectangle_t*)obj;
         for (px_t i = rectangle_obj->position_y; i < rectangle_obj->position_y + rectangle_obj->side_length_2; ++i) {
             for (px_t j = rectangle_obj->position_x; j < rectangle_obj->position_x + rectangle_obj->side_length_1; ++j) {
                 if((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
-                    if (pixel_buffer->buff[i * pixel_buffer->width + j] != BLACK) {
+                    if (pixel_buffer->buff[i * pixel_buffer->width + j] != UNDEFINIED_ID) {
                         return pixel_buffer->buff[i * pixel_buffer->width + j];
                     } else {
-                        pixel_buffer->buff[i * pixel_buffer->width + j] = rectangle_obj->colour;
+                        pixel_buffer->buff[i * pixel_buffer->width + j] = rectangle_obj->ID;
                     }
                 }   
             }
@@ -177,14 +241,14 @@ colour_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj
     default:
         break;
     }
-    return BLACK;
+    return UNDEFINIED_ID;
 }
 
 void reset_pixel_buffer(pixel_buffer_t *pixel_buffer)
 {
     for (int i = 0; i < pixel_buffer->height; i++) {
         for (int j = 0; j < pixel_buffer->width; j++) {
-            pixel_buffer->buff[i * pixel_buffer->width + j] = BLACK;
+            pixel_buffer->buff[i * pixel_buffer->width + j] = UNDEFINIED_ID;
         }
     }
 }
@@ -205,22 +269,33 @@ void release_circle(circle_t *circle)
     free(circle);
 }
 
-rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour)
+rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour, const char *name)
 {
     rectangle_t *rectangle = malloc(sizeof(rectangle_t));
     if (rectangle == NULL) {
         return NULL;
     }
 
-    rectangle->position_x = position_x; rectangle->position_y = position_y, rectangle->colour = colour;
+    rectangle->ID = generate_id();
+    rectangle->position_x = position_x; rectangle->position_y = position_y;
     rectangle->x_speed = x_speed; rectangle->y_speed = y_speed;
     rectangle->side_length_1 = side_length_1 * 2; rectangle->side_length_2 = side_length_2;
+    rectangle->colour = colour;
+    rectangle->name = malloc(strlen(name) + 1);
+
+    if (rectangle->name == NULL) {
+        free(rectangle);
+        return NULL;
+    }
+
+    strcpy((char*)rectangle->name, name);
 
     return rectangle;
 }
 
 void release_rectangle(rectangle_t *rectangle)
 {
+    free((char*)rectangle->name);
     free(rectangle);
 }
 
@@ -228,12 +303,27 @@ const char* colour_2_string(colour_t colour)
 {
     switch (colour)
     {
-    case BLACK: return "black"; break;
-    case WHITE: return "white"; break;
-    case RED:   return "red"; break;
-    case GREEN:   return "green"; break;
-    case BLUE:   return "blue"; break;
+    case BLACK:    return "black"; break;
+    case WHITE:    return "white"; break;
+    case RED:      return "red"; break;
+    case GREEN:    return "green"; break;
+    case BLUE:     return "blue"; break;
     case YELLOW:   return "yellow"; break;
-    default: return "unknown"; break;
+    default:       return "unknown"; break;
     }
+}
+
+unsigned char generate_id()
+{
+    return ++ID;
+}
+
+static colour_t ID_to_colour(scene_t *scene, ID_t ID)
+{
+    for (int i = 0; i < scene->number_of_objects; ++i) {
+        if (scene->scene[i]->ID == ID) {
+            return scene->scene[i]->colour;
+        }
+    }
+    return BLACK;
 }

@@ -178,14 +178,16 @@ static page_return_code_t load_game(px_t height, px_t width)
     if (pixel_buffer1 == NULL) { resolve_error(MEM_ALOC_FAILURE); return ERROR; }
     if (pixel_buffer2 == NULL) { resolve_error(MEM_ALOC_FAILURE); release_pixel_buffer(pixel_buffer1); return ERROR; }
 
-    rectangle_t *ball = create_rectangle(37, 8, 1, 1, 1, 2, WHITE);
-    if (ball == NULL) { resolve_error(MEM_ALOC_FAILURE); release_pixel_buffer(pixel_buffer1), release_pixel_buffer(pixel_buffer2); return ERROR; }
+    rectangle_t *ball = create_rectangle(37, 8, 1, 1, 1, 2, WHITE, "ball");
+    rectangle_t *player = create_rectangle(102, 5, 1, 7, 0, 0, GREEN, "player");
+    rectangle_t *meteror = create_rectangle(40, 10, 2, 2, 0, 0, YELLOW, "meteor 1");
+    rectangle_t *enemy = create_rectangle(5, 5, 1, 7, 0, 0, RED, "enemy");
 
-    rectangle_t *player = create_rectangle(102, 5, 1, 7, 0, 0, GREEN);
-    if (player == NULL) { resolve_error(MEM_ALOC_FAILURE); release_pixel_buffer(pixel_buffer1), release_pixel_buffer(pixel_buffer2); release_rectangle(ball); return ERROR; }
-
-    rectangle_t *meteror = create_rectangle(40, 10, 2, 2, 0, 0, YELLOW);
-    rectangle_t *enemy = create_rectangle(5, 5, 1, 7, 0, 0, RED);
+    scene_t *scene = create_scene();
+    add_to_scene(scene, ball); // TODO: make here and also when creating object macro which cleans all the mess
+    add_to_scene(scene, player);
+    add_to_scene(scene, meteror);
+    add_to_scene(scene, enemy);
 
     clear_canvas();
 
@@ -228,9 +230,9 @@ static page_return_code_t load_game(px_t height, px_t width)
         compute_object_pixels_in_buffer(pixel_buffer2, player, RECTANGLE);
         compute_object_pixels_in_buffer(pixel_buffer2, meteror, RECTANGLE);
         compute_object_pixels_in_buffer(pixel_buffer2, enemy, RECTANGLE);
-        colour_t collision_colour = compute_object_pixels_in_buffer(pixel_buffer2, ball, RECTANGLE);
+        ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer2, ball, RECTANGLE);
 
-        if (collision_colour == GREEN || collision_colour == RED) {
+        if (collision_ID == enemy->ID || collision_ID == player->ID) {
 
             int paddle_center = ball->position_y + (ball->side_length_2 / 2);
             int ball_center = ball->position_y + (ball->side_length_2);
@@ -245,22 +247,19 @@ static page_return_code_t load_game(px_t height, px_t width)
             ball->x_speed = -ball->x_speed;
         }
 
-        if (collision_colour == YELLOW) {
+        if (collision_ID == meteror->ID) {
             meteror->colour = BLACK;
         }
 
         pixel_buffer_t *tmp_buffer = pixel_buffer1;
         pixel_buffer1 = pixel_buffer2;
         pixel_buffer2 = tmp_buffer;
-        render_graphics(pixel_buffer1);
+        render_graphics(pixel_buffer1, scene);
 
         usleep(70000);
     }
 
-    release_rectangle(ball);
-    release_rectangle(player);
-    release_rectangle(meteror);
-    release_rectangle(enemy);
+    release_scene(scene);
     release_pixel_buffer(pixel_buffer1);
     release_pixel_buffer(pixel_buffer2);
 
