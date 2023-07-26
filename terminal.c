@@ -138,17 +138,17 @@ int render_terminal(px_t line_width)
         }
 
         int buffer_size = curr_line_size;
-        if (buffer_size > 100) {
-            buffer_size = 100;
+        if (buffer_size > 102) {
+            buffer_size = 102;
         }
 
         char *line = get_last_line(buffer_size);
 
-        put_horizontal_line(line_width, '=');
-        put_text("|| > ", line_width, LEFT);
+        put_horizontal_line(line_width - 1, '=');
+        write_text("|| > ");
         write_text(line);
-        put_text("||\n", line_width - 4 - buffer_size, RIGHT);
-        put_horizontal_line(line_width, '=');
+        put_text("||", line_width - 7 - buffer_size, RIGHT);
+        put_horizontal_line(line_width - 1, '=');
 
         fclose(file);
         free(line);

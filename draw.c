@@ -10,10 +10,13 @@
 // --------------------------------------------------------------------------------------------- //
 
 #define SQUARE(num) (num * num)
+#define ROW_DOWN() printf("\033[B")
+#define CHAR_RIGHT() printf("\033[C")
+#define CURSOR_TO_BEGINNING_OF_LINE() printf("\r")
 
 // --------------------------------------------------------------------------------------------- //
 
-unsigned char ID = 0;
+unsigned char ID = 6;
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -27,7 +30,7 @@ void clear_canvas(void)
     printf("\033[2J\033[H");
 }
 
-void set_cursor_at_beginning_of_canvas(void)
+void set_cursor_at_beginning_of_window(void)
 {
     printf("\033[H");
 }
@@ -42,6 +45,40 @@ void show_cursor()
     printf("\033[?25h");
 }
 
+void set_cursor_at_beginning_of_canvas(void)
+{
+    set_cursor_at_beginning_of_window();
+    put_empty_row(1);
+    CHAR_RIGHT();
+}
+
+void draw_borders(px_t height, px_t width)
+{
+    set_cursor_at_beginning_of_window();
+    width += 1;
+    height += 1;
+
+    printf("┌");
+    for (int i = 0; i < width - 2; ++i) {
+        printf("─");
+    }
+    printf("┐\n");
+
+    for (int i = 0; i < height - 2; ++i) {
+        printf("│");
+        for (int j = 0; j < width - 2; ++j) {
+            printf(" ");
+        }
+        printf("│\n");
+    }
+
+    printf("└");
+    for (int i = 0; i < width - 2; ++i) {
+        printf("─");
+    }
+    printf("┘\n");
+}
+
 void put_text(const char* text, px_t line_width, position_t pos)
 {
     px_t text_length = strlen(text);
@@ -49,9 +86,11 @@ void put_text(const char* text, px_t line_width, position_t pos)
     switch (pos)
     {
     case LEFT:
+        CHAR_RIGHT();
         printf("%s", text);
         break;
     case CENTER:
+        CHAR_RIGHT();
         px_t center_padding = (line_width - text_length) / 2;
         for (int i = 0; i < center_padding; i++) {
             putchar(' ');
@@ -59,8 +98,9 @@ void put_text(const char* text, px_t line_width, position_t pos)
         printf("%s", text);
         break;
     case RIGHT:
+        CHAR_RIGHT();
         px_t right_padding = (line_width - text_length);
-        for (int i = 0; i < right_padding; i++) {
+        for (int i = 0; i < right_padding - 1; i++) {
             putchar(' ');
         }
         printf("%s", text);
@@ -68,26 +108,31 @@ void put_text(const char* text, px_t line_width, position_t pos)
     default:
         break;
     }
+    CURSOR_TO_BEGINNING_OF_LINE();
+    ROW_DOWN();
 }
 
 void write_text(const char* text)
 {
+    CHAR_RIGHT();
     printf("%s", text);
 }
 
 void put_empty_row(unsigned int rows_count)
 {
     for (unsigned int i = 0; i < rows_count; ++i) {
-        putchar('\n');
+        ROW_DOWN();
     }
 }
 
 void put_horizontal_line(px_t line_width, char symbol)
 {
+    CHAR_RIGHT();
     for (unsigned int i = 0; i < line_width; ++i) {
         putchar(symbol);
     }
-    putchar('\n');
+    CURSOR_TO_BEGINNING_OF_LINE();
+    ROW_DOWN();
 }
 
 pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
@@ -99,7 +144,7 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
 
     pixel_buffer->height = height; pixel_buffer->width = width;
     pixel_buffer->buff = calloc(height * width, sizeof(unsigned char));
-    
+
     if (pixel_buffer->buff == NULL) {
         free(pixel_buffer);
         return NULL;
@@ -170,7 +215,7 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene) {
             
             switch (pixel) {
                 case BLACK:
-                    printf(" "); break;
+                    CHAR_RIGHT(); break;
                 case WHITE:
                     printf("\033[0;97m█\033[0m"); break;
                 case RED:
@@ -182,7 +227,7 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene) {
                 case YELLOW:
                     printf("\033[0;93m█\033[0m"); break;
                 default:
-                    printf(" "); break;
+                    CHAR_RIGHT(); break;
             }
         }
         putchar('\n');

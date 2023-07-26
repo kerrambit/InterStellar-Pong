@@ -71,7 +71,9 @@ typedef struct circle_t {
 } circle_t;
 
 void clear_canvas(void);
+void set_cursor_at_beginning_of_window(void);
 void set_cursor_at_beginning_of_canvas(void);
+void draw_borders(px_t height, px_t width);
 void show_cursor(void);
 void hide_cursor(void);
 void put_text(const char* text, px_t line_width, position_t pos);

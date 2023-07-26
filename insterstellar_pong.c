@@ -22,7 +22,7 @@
 
 // --------------------------------------------------------------------------------------------- //
 
-#define CANVAS_WIDTH 108
+#define CANVAS_WIDTH 112
 #define CANVAS_HEIGHT 22
 
 // --------------------------------------------------------------------------------------------- //
@@ -96,6 +96,7 @@ int main()
         return EXIT_FAILURE;
     }
 
+    put_empty_row(1);
     show_cursor();
     return EXIT_SUCCESS;
 }
