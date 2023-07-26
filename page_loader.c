@@ -2,12 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "page_loader.h"
 #include "utils.h"
 #include "draw.h"
 #include "errors.h"
 #include "terminal.h"
+
+// --------------------------------------------------------------------------------------------- //
+
+#define GAME_WIDTH 80
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -72,7 +77,7 @@ page_return_code_t load_page(page_t page, px_t height, px_t width)
     case PREGAME_SETTING_PAGE:
         return load_pregame_setting_page(height, width);
     case GAME_PAGE:
-        return load_game(height, width);
+        return load_game(height, GAME_WIDTH);
     case AFTER_GAME_PAGE:
         return load_after_game_page(height, width);
     default:
@@ -172,21 +177,23 @@ static int init_file_descriptor_monitor()
 
 static page_return_code_t load_game(px_t height, px_t width)
 {
+    srand(time(NULL));
+
     pixel_buffer_t *pixel_buffer1 = create_pixel_buffer(height, width);
     pixel_buffer_t *pixel_buffer2 = create_pixel_buffer(height, width);
 
     if (pixel_buffer1 == NULL) { resolve_error(MEM_ALOC_FAILURE); return ERROR; }
     if (pixel_buffer2 == NULL) { resolve_error(MEM_ALOC_FAILURE); release_pixel_buffer(pixel_buffer1); return ERROR; }
 
-    rectangle_t *ball = create_rectangle(37, 8, 1, 1, 1, 2, WHITE, "ball");
-    rectangle_t *player = create_rectangle(102, 5, 1, 7, 0, 0, GREEN, "player");
-    rectangle_t *meteror = create_rectangle(40, 10, 2, 2, 0, 0, YELLOW, "meteor 1");
-    rectangle_t *enemy = create_rectangle(5, 5, 1, 7, 0, 0, RED, "enemy");
+    rectangle_t *ball = create_rectangle(37, 8, 1, 1, 2, 1, WHITE, "ball");
+    rectangle_t *player = create_rectangle(width - 5, 5, 1, 9, 0, 0, GREEN, "player");
+    rectangle_t *meteor = create_rectangle(15, 13, 2, 2, 0, 0, YELLOW, "meteor 1");
+    rectangle_t *enemy = create_rectangle(5, 5, 1, 9, 0, 0, RED, "enemy");
 
     scene_t *scene = create_scene();
     add_to_scene(scene, ball); // TODO: make here and also when creating object macro which cleans all the mess
     add_to_scene(scene, player);
-    add_to_scene(scene, meteror);
+    add_to_scene(scene, meteor);
     add_to_scene(scene, enemy);
 
     clear_canvas();
@@ -198,7 +205,7 @@ static page_return_code_t load_game(px_t height, px_t width)
         reset_pixel_buffer(pixel_buffer2);
 
         int ready_fds = init_file_descriptor_monitor();
-        if (ready_fds > 0) { // is there is some activity on standart input
+        if (ready_fds > 0) {
 
             int c = getchar();
 
@@ -227,28 +234,59 @@ static page_return_code_t load_game(px_t height, px_t width)
             ball->y_speed *= -1; 
         }        
 
+        int ball_center = ball->position_y + (ball->side_length_2 / 2);
+        int paddle_center = enemy->position_y + (enemy->side_length_2 / 2);
+
+        if (ball_center < paddle_center) {
+            enemy->position_y -= 2;
+        } else if (ball_center > paddle_center) {
+            enemy->position_y += 2;
+        }
+
+        enemy->position_y += rand() % 3;
+
+        if (enemy->position_y < 0) {
+            enemy->position_y = 0;
+        } else if (enemy->position_y + enemy->side_length_2 > pixel_buffer1->height) {
+            enemy->position_y = pixel_buffer1->height - enemy->side_length_2;
+        }
+
         compute_object_pixels_in_buffer(pixel_buffer2, player, RECTANGLE);
-        compute_object_pixels_in_buffer(pixel_buffer2, meteror, RECTANGLE);
+        compute_object_pixels_in_buffer(pixel_buffer2, meteor, RECTANGLE);
         compute_object_pixels_in_buffer(pixel_buffer2, enemy, RECTANGLE);
         ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer2, ball, RECTANGLE);
 
         if (collision_ID == enemy->ID || collision_ID == player->ID) {
 
-            int paddle_center = ball->position_y + (ball->side_length_2 / 2);
-            int ball_center = ball->position_y + (ball->side_length_2);
+            int paddle_center = player->position_y + (player->side_length_2 / 2);
+            int ball_center = ball->position_y + (ball->side_length_2 / 2);
             int vertical_distance = ball_center - paddle_center;
 
+            if (ball->y_speed == 0) {
+                ball->y_speed = 1;
+            }
             if (vertical_distance > 0) {
                 ball->y_speed = abs(ball->y_speed);
+            } else if (vertical_distance < 0) {
+                ball->y_speed = -1 * abs(ball->y_speed);
             } else {
-                ball->y_speed = -abs(ball->y_speed);
+                ball->y_speed = 0 + rand() % 1;
             }
 
             ball->x_speed = -ball->x_speed;
         }
 
-        if (collision_ID == meteror->ID) {
-            meteror->colour = BLACK;
+        if (ball->position_x <= 2) {
+            game_running = false;
+        } else if (ball->position_x + ball->side_length_1 >= pixel_buffer1->width) {
+            game_running = false;
+        }
+
+        if (collision_ID == meteor->ID) {
+            meteor->colour = BLACK;
+            meteor->position_x = (rand() % (width - 10)) + 5;
+            meteor->position_y = (rand() % (height + 10)) + 5;
+            meteor->colour = YELLOW;
         }
 
         pixel_buffer_t *tmp_buffer = pixel_buffer1;
