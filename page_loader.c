@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "page_loader.h"
 #include "utils.h"
@@ -17,11 +18,11 @@
 // --------------------------------------------------------------------------------------------- //
 
 static void put_game_logo(px_t width, position_t position);
-static page_return_code_t load_main_page(px_t height, px_t width);
+static page_return_code_t load_main_page(px_t height, px_t width, bool unkown_command);
 static page_return_code_t load_not_found_page(px_t height, px_t width);
-static page_return_code_t load_pregame_setting_page(px_t height, px_t width);
+static page_return_code_t load_pregame_setting_page(px_t height, px_t width, bool unkown_command);
 static page_return_code_t load_game(px_t height, px_t width);
-static page_return_code_t load_after_game_page(px_t height, px_t width);
+static page_return_code_t load_after_game_page(px_t height, px_t width, bool unkown_command);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -37,6 +38,7 @@ page_t find_page(page_t current_page, const char *command)
         } else if (STR_EQ(command, "p") || STR_EQ(command, "P") || STR_EQ(command, "play") || STR_EQ(command, "PLAY")) {
             return PREGAME_SETTING_PAGE;
         }
+        return NO_PAGE;
 
     case PREGAME_SETTING_PAGE:
         if (STR_EQ(command, "s") || STR_EQ(command, "S") || STR_EQ(command, "start game") || STR_EQ(command, "START GAME")) {
@@ -44,6 +46,7 @@ page_t find_page(page_t current_page, const char *command)
         } else if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
             return MAIN_PAGE;
         }
+        return NO_PAGE;
 
     case AFTER_GAME_PAGE:
         if (STR_EQ(command, "n") || STR_EQ(command, "N") || STR_EQ(command, "new game") || STR_EQ(command, "NEW GAME")) {
@@ -51,26 +54,27 @@ page_t find_page(page_t current_page, const char *command)
         } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
+        return NO_PAGE;
 
     default:
         return NO_PAGE;
     }
 }
 
-page_return_code_t load_page(page_t page, px_t height, px_t width)
+page_return_code_t load_page(page_t page, px_t height, px_t width, bool terminal_signal_unkwnon_commands)
 {
     switch (page)
     {
     case MAIN_PAGE:
-        return load_main_page(height, width);
+        return load_main_page(height, width, terminal_signal_unkwnon_commands);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
         return ERROR;
     case PREGAME_SETTING_PAGE:
-        return load_pregame_setting_page(height, width);
+        return load_pregame_setting_page(height, width, terminal_signal_unkwnon_commands);
     case GAME_PAGE:
         return load_game(height, GAME_WIDTH);
     case AFTER_GAME_PAGE:
-        return load_after_game_page(height, width);
+        return load_after_game_page(height, width, terminal_signal_unkwnon_commands);
     default:
         return load_not_found_page(height, width);
     }
@@ -83,7 +87,7 @@ page_return_code_t load_page(page_t page, px_t height, px_t width)
  * @note Minimal height of main page is 12 pixels.
  * @return int 
  */
-static page_return_code_t load_main_page(px_t height, px_t width)
+static page_return_code_t load_main_page(px_t height, px_t width, bool unkown_command)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -96,7 +100,7 @@ static page_return_code_t load_main_page(px_t height, px_t width)
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(5);
 
-    if (render_terminal(width) == -1) {
+    if (render_terminal(width, unkown_command) == -1) {
         return ERROR;
     }
 
@@ -118,7 +122,7 @@ static page_return_code_t load_not_found_page(px_t height, px_t width)
     return ERROR;
 }
 
-static page_return_code_t load_pregame_setting_page(px_t height, px_t width)
+static page_return_code_t load_pregame_setting_page(px_t height, px_t width, bool unkown_command)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -133,14 +137,14 @@ static page_return_code_t load_pregame_setting_page(px_t height, px_t width)
     put_text("BACK [B]", width, CENTER);
     put_empty_row(4);
 
-    if (render_terminal(width) == -1) {
+    if (render_terminal(width, unkown_command) == -1) {
         return ERROR;
     }
     
     return SUCCES;
 }
 
-static page_return_code_t load_after_game_page(px_t height, px_t width)
+static page_return_code_t load_after_game_page(px_t height, px_t width, bool unkown_command)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -155,7 +159,7 @@ static page_return_code_t load_after_game_page(px_t height, px_t width)
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(4);
 
-    if (render_terminal(width) == -1) {
+    if (render_terminal(width, unkown_command) == -1) {
         return ERROR;
     }
     

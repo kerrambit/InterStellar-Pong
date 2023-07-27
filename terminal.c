@@ -125,7 +125,7 @@ int process_command(char c, char **command)
     return 0;
 }
 
-int render_terminal(px_t line_width)
+int render_terminal(px_t line_width, bool unkown_command)
 {
     if (IS_TERMINAL_ENABLED) {
 
@@ -146,8 +146,17 @@ int render_terminal(px_t line_width)
 
         put_horizontal_line(line_width - 1, '=');
         write_text("|| > ");
-        write_text(line);
-        put_text("||", line_width - 7 - buffer_size, RIGHT);
+        if (unkown_command) {
+            printf("\033[3m\033[93mUnknown command.\033[0m"); // TODO put it in write_text()
+            put_text("||", 90, RIGHT);
+        } else if (strlen(line) != 0) {
+            write_text(line);
+            put_text("||", line_width - 7 - buffer_size, RIGHT);
+        } else {
+            printf("\033[3m\033[90mEnter your commands.\033[0m"); // TODO put it in write_text()
+            put_text("||", 86, RIGHT);
+        }
+        
         put_horizontal_line(line_width - 1, '=');
 
         fclose(file);

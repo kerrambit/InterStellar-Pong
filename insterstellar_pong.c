@@ -45,7 +45,7 @@ int main()
     struct termios old_term = init_termios();
 
     // try to load and render main page
-    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == ERROR) {
+    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, false) == ERROR) {
         if (remove_terminal_data() == -1) {
             resolve_error(FAILURE_OF_REMOVING_FILE);
         }
@@ -67,22 +67,24 @@ int main()
         }
 
         page_t new_page = NO_PAGE;
+        bool unknown_command = false;
         if (command != NULL) {
             new_page = find_page(current_page, command);
             if (new_page != NO_PAGE) {
                 current_page = new_page;
+            } else {
+                unknown_command = true;
             }
         }
 
         free(command);
-
-        page_return_code_t load_page_return_code = load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH);
+        page_return_code_t load_page_return_code = load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH, unknown_command);
 
         if (load_page_return_code == ERROR) {
             break;
         } else if (load_page_return_code == SUCCESS_GAME) {
             current_page = AFTER_GAME_PAGE;
-            if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH) == ERROR) {
+            if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, unknown_command) == ERROR) {
                 break;
             } 
         }

@@ -34,6 +34,6 @@ typedef enum page_return_code_t {
 
 page_t find_page(page_t current_page, const char *command);
 const char *convert_page_2_string(page_t page);
-page_return_code_t load_page(page_t page, px_t height, px_t width);
+page_return_code_t load_page(page_t page, px_t height, px_t width, bool terminal_signal_unkwown_commands);
 
 #endif

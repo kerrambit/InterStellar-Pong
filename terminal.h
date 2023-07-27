@@ -13,9 +13,10 @@
 #define TERMINAL_H
 
 #include "draw.h"
+#include <stdbool.h>
 
 int enable_terminal();
-int render_terminal(px_t line_width);
+int render_terminal(px_t line_width, bool unkown_command);
 int process_command(char c, char **command);
 int remove_terminal_data();
 
