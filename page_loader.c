@@ -13,13 +13,15 @@
 
 // --------------------------------------------------------------------------------------------- //
 
+#define COMMAND_EQ(command, ch, CH, word, WORD) STR_EQ(command, ch) || STR_EQ(command, CH) || STR_EQ(command, word) || STR_EQ(command, WORD)
+
 #define GAME_WIDTH 80
 #define PLAYERS_DATA_PATH "players.data"
 
 // --------------------------------------------------------------------------------------------- //
 
-int curr_players_page = 0;
-int maxium_players;
+int global_curr_players_page = 0;
+int global_maxium_players;
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -66,58 +68,58 @@ page_t find_page(page_t current_page, const char *command)
     switch (current_page)
     {
     case MAIN_PAGE:
-        if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+        if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
-        } else if (STR_EQ(command, "a") || STR_EQ(command, "A") || STR_EQ(command, "about") || STR_EQ(command, "ABOUT")) {
+        } else if (COMMAND_EQ(command, "a", "A", "about", "ABOUT")) {
             return ABOUT_PAGE;
-        } else if (STR_EQ(command, "p") || STR_EQ(command, "P") || STR_EQ(command, "play") || STR_EQ(command, "PLAY")) {
+        } else if (COMMAND_EQ(command, "p", "P", "play", "PLAY")) {
             return choose_pregame_page();
         }
         return NO_PAGE;
 
     case PREGAME_SETTING_PAGE:
-        if (STR_EQ(command, "c") || STR_EQ(command, "C") || STR_EQ(command, "create player") || STR_EQ(command, "CREATE PLAYER")) {
+        if (COMMAND_EQ(command, "c", "C", "create player", "CREATE PLAYER")) {
             return GAME_PAGE;
-        } else if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
+        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK")) {
             return MAIN_PAGE;
-        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+        } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
         return NO_PAGE;
 
     case AFTER_GAME_PAGE:
-        if (STR_EQ(command, "n") || STR_EQ(command, "N") || STR_EQ(command, "new game") || STR_EQ(command, "NEW GAME")) {
+        if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
             return choose_pregame_page();
-        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+        } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
         return NO_PAGE;
 
     case PRE_CREATE_NEW_PLAYER_PAGE:
-        if (STR_EQ(command, "c") || STR_EQ(command, "C") || STR_EQ(command, "create player") || STR_EQ(command, "CREATE PLAYER")) {
+        if (COMMAND_EQ(command, "c", "C", "create player", "CREATE PLAYER")) {
             return CREATE_NEW_PLAYER_PAGE;
-        } else if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
+        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK")) {
             return MAIN_PAGE;
-        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+        } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
         return NO_PAGE;
 
     case CHOOSE_PLAYER_PAGE:
-        if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
-            if (curr_players_page == 0) {
+        if (COMMAND_EQ(command, "b", "B", "back", "BACK")) {
+            if (global_curr_players_page == 0) {
                 return MAIN_PAGE;
             } else {
-                curr_players_page--;
+                global_curr_players_page--;
             }
-        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+        } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
-        } else if (STR_EQ(command, "c") || STR_EQ(command, "C") || STR_EQ(command, "create player") || STR_EQ(command, "CREATE PLAYER")) {
+        } else if (COMMAND_EQ(command, "c", "C", "create player", "CREATE PLAYER")) {
             return CREATE_NEW_PLAYER_PAGE;
-        } else if (STR_EQ(command, "n") || STR_EQ(command, "N") || STR_EQ(command, "next") || STR_EQ(command, "NEXT")) {
-            curr_players_page++;
-            if ((curr_players_page * 3) > maxium_players) {
-                curr_players_page--;
+        } else if (COMMAND_EQ(command, "n", "N", "next", "NEXT")) {
+            global_curr_players_page++;
+            if ((global_curr_players_page * 3) > global_maxium_players) {
+                global_curr_players_page--;
             }
             return CHOOSE_PLAYER_PAGE;
         }
@@ -435,7 +437,7 @@ static page_t choose_pregame_page(void)
 
     int players_count = players->count;
     release_players_array(players);
-    maxium_players = players_count;
+    global_maxium_players = players_count;
 
     if (players_count > 0) {
         return CHOOSE_PLAYER_PAGE;
@@ -496,19 +498,19 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, bool 
     put_text("Enter the name of player account you want to play.", width, CENTER);
     put_empty_row(1);
 
-    int rest = players->count - (curr_players_page * 3);
+    int rest = players->count - (global_curr_players_page * 3);
     if (rest == 1) {
-        put_player(width, 30, 5, players->players[curr_players_page * 3], false, 0);
+        put_player(width, 30, 5, players->players[global_curr_players_page * 3], false, 0);
     } else if (rest == 2) {
-        put_player(width / 2, 30, 5, players->players[curr_players_page * 3], true, 0);
+        put_player(width / 2, 30, 5, players->players[global_curr_players_page * 3], true, 0);
         write_text(" ");
-        put_player(width / 2, 30, 5, players->players[(curr_players_page * 3) + 1], false, width / 2);
+        put_player(width / 2, 30, 5, players->players[(global_curr_players_page * 3) + 1], false, width / 2);
     } else {
-        put_player(width / 3, 30, 5, players->players[curr_players_page * 3], true, 0);
+        put_player(width / 3, 30, 5, players->players[global_curr_players_page * 3], true, 0);
         write_text(" ");
-        put_player(width / 3, 30, 5, players->players[(curr_players_page * 3) + 1], true, width / 3);
+        put_player(width / 3, 30, 5, players->players[(global_curr_players_page * 3) + 1], true, width / 3);
         write_text(" ");
-        put_player(width / 3, 30, 5, players->players[(curr_players_page * 3) + 2], false, (2 * width) / 3);
+        put_player(width / 3, 30, 5, players->players[(global_curr_players_page * 3) + 2], false, (2 * width) / 3);
     }
 
     put_empty_row(1);
