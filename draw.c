@@ -6,20 +6,23 @@
 
 #include "draw.h"
 #include "errors.h"
+#include "utils.h"
 
 // --------------------------------------------------------------------------------------------- //
 
-#define SQUARE(num) (num * num)
-#define ROW_DOWN() printf("\033[B")
-#define CHAR_RIGHT() printf("\033[C")
 #define CURSOR_TO_BEGINNING_OF_LINE() printf("\r")
+#define CHAR_RIGHT() printf("\033[C")
+#define ROW_DOWN() printf("\033[B")
+#define ROW_UP() printf("\033[A")
 
 // --------------------------------------------------------------------------------------------- //
 
-unsigned char ID = 6;
+static unsigned char ID = 6;
 
 // --------------------------------------------------------------------------------------------- //
 
+static void display_button(px_t width, px_t height, px_t padding, const char *text);
+static void display_button_text(px_t width, const char *text);
 static ID_t generate_id();
 static colour_t ID_to_colour(scene_t *scene, ID_t ID);
 
@@ -35,6 +38,13 @@ void set_cursor_at_beginning_of_window(void)
     printf("\033[H");
 }
 
+void set_cursor_at_beginning_of_canvas(void)
+{
+    set_cursor_at_beginning_of_window();
+    put_empty_row(1);
+    CHAR_RIGHT();
+}
+
 void hide_cursor()
 {
     printf("\033[?25l");
@@ -45,18 +55,10 @@ void show_cursor()
     printf("\033[?25h");
 }
 
-void set_cursor_at_beginning_of_canvas(void)
-{
-    set_cursor_at_beginning_of_window();
-    put_empty_row(1);
-    CHAR_RIGHT();
-}
-
 void draw_borders(px_t height, px_t width)
 {
     set_cursor_at_beginning_of_window();
-    width += 1;
-    height += 1;
+    width += 1; height += 1;
 
     printf("┌");
     for (int i = 0; i < width - 2; ++i) {
@@ -89,6 +91,7 @@ void put_text(const char* text, px_t line_width, position_t pos)
         CHAR_RIGHT();
         printf("%s", text);
         break;
+
     case CENTER:
         CHAR_RIGHT();
         px_t center_padding = (line_width - text_length) / 2;
@@ -97,6 +100,7 @@ void put_text(const char* text, px_t line_width, position_t pos)
         }
         printf("%s", text);
         break;
+
     case RIGHT:
         CHAR_RIGHT();
         px_t right_padding = (line_width - text_length);
@@ -116,6 +120,93 @@ void write_text(const char* text)
 {
     CHAR_RIGHT();
     printf("%s", text);
+}
+
+void put_button(px_t width, px_t button_width, px_t button_height, const char *text, position_t pos, bool row_mode, px_t row_margin)
+{
+    switch (pos)
+    {
+    case LEFT:
+        display_button(button_width, button_height, 1 + row_margin, text);
+        break;
+    case CENTER:
+        px_t center_padding = (width - button_width) / 2;
+        display_button(button_width, button_height, center_padding + row_margin, text);
+        break;
+    case RIGHT:
+        px_t right_padding = (width - button_width) - 1;
+        display_button(button_width, button_height, right_padding + row_margin, text);
+        break;
+    default:
+        break;
+    }
+
+    if (row_mode) {
+        for (int i = 0; i < button_height - 1; ++i) { ROW_UP(); }
+    } else {
+        CURSOR_TO_BEGINNING_OF_LINE();
+        ROW_DOWN();
+    }
+}
+
+static void display_button(px_t width, px_t height, px_t padding, const char *text)
+{
+    CURSOR_TO_BEGINNING_OF_LINE();
+    CHAR_RIGHT();
+
+    for (int i = 0; i < padding; ++i) {CHAR_RIGHT();}
+
+    printf("┌");
+    for (int i = 0; i < width - 2; ++i) {
+        printf("─");
+    }
+    printf("┐\n");
+
+    for (int i = 0; i < height - 2; ++i) {
+        CHAR_RIGHT();
+        for (int i = 0; i < padding; ++i) {CHAR_RIGHT();}
+        printf("│");
+
+        if (i == (height - 2) / 2) {
+            display_button_text(width, text);
+        } else {
+            for (int j = 0; j < width - 2; ++j) {
+                printf(" ");
+            }
+        }
+        printf("│\n");
+    }
+
+    CHAR_RIGHT();
+    for (int i = 0; i < padding; ++i) {CHAR_RIGHT();}
+
+    printf("└");
+    for (int i = 0; i < width - 2; ++i) {
+        printf("─");
+    }
+    printf("┘");
+}
+
+static void display_button_text(px_t width, const char *text)
+{
+    int text_length_equalizer = 0;
+
+    if (strlen(text) % 2 != 0) {
+        text_length_equalizer--;
+    }
+    if (width % 2 != 0) {
+        text_length_equalizer--;
+    }
+
+    for (int j = 0; j < (width - 1) / 2 - (strlen(text) / 2); ++j) {
+        printf(" ");
+    }
+
+    printf("%s", text);
+
+    for (int j = 0; j < (width - 1) / 2 - (strlen(text) / 2) + text_length_equalizer; ++j) {
+        printf(" ");
+    }
 }
 
 void put_empty_row(unsigned int rows_count)
@@ -153,8 +244,8 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
     return pixel_buffer;
 }
 
-scene_t *create_scene() {
-
+scene_t *create_scene()
+{
     scene_t *scene = malloc(sizeof(scene_t));
     if (scene == NULL) {
         return NULL;
@@ -205,8 +296,8 @@ rectangle_t *add_to_scene(scene_t *scene, rectangle_t *object) {
     return object;
 }
 
-void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene) {
-    
+void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene)
+{
     for (unsigned int i = 0; i < pixel_buffer->height; ++i) {
         for (unsigned int j = 0; j < pixel_buffer->width; ++j) {
 
@@ -236,8 +327,10 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene) {
 
 void release_pixel_buffer(pixel_buffer_t *pixel_buffer)
 {
-    free(pixel_buffer->buff);
-    free(pixel_buffer);
+    if (pixel_buffer != NULL) {
+        free(pixel_buffer->buff);
+        free(pixel_buffer);   
+    }
 }
 
 ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type)
@@ -340,8 +433,10 @@ rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length
 
 void release_rectangle(rectangle_t *rectangle)
 {
-    free((char*)rectangle->name);
-    free(rectangle);
+    if (rectangle != NULL) {
+        free((char*)rectangle->name);
+        free(rectangle);
+    }
 }
 
 const char* colour_2_string(colour_t colour)

@@ -4,8 +4,8 @@
 
 // --------------------------------------------------------------------------------------------- //
 
-#define PRINT_ERROR_MESS(err_mess) fprintf(stderr, "\033[31m[ERROR] %s.\033[0m\n", err_mess); break
-#define PRINT_WARNING_MESS(err_mess) fprintf(stderr, "\033[33m[WARNING] %s.\033[0m\n", err_mess); break
+#define PRINT_ERROR_MESS(err_mess) fprintf(stderr, "\033[31m[ERROR] - %s.\033[0m\n", err_mess); break
+#define PRINT_WARNING_MESS(err_mess) fprintf(stderr, "\033[33m[WARNING]  %s.\033[0m\n", err_mess); break
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -20,6 +20,7 @@ void resolve_error(errors_t error)
     case CORRUPTED_WRITE_TO_FILE: PRINT_ERROR_MESS("[I/O Error]: writing to the file failed");
     case FAILURE_OF_REMOVING_FILE: PRINT_ERROR_MESS("[I/O Error]: removing of the file failed");
     case MEM_ALOC_FAILURE: PRINT_ERROR_MESS("[Memory error]: memory allocation failed");
+    case INVALID_DATA_IN_FILE: PRINT_ERROR_MESS("[Data Error]: data in file was invalid or corrupted");
     default:
         break;
     }

@@ -21,7 +21,8 @@ typedef enum errors_t
     GENERAL_IO_ERROR,
     CORRUPTED_WRITE_TO_FILE,
     FAILURE_OF_REMOVING_FILE,
-    MEM_ALOC_FAILURE
+    MEM_ALOC_FAILURE,
+    INVALID_DATA_IN_FILE
 } errors_t;
 
 /**

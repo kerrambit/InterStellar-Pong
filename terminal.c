@@ -37,6 +37,7 @@ int enable_terminal()
 
     FILE* file = fopen(TERMINAL_FILE, "w");
     if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
         return -1;
     }
 

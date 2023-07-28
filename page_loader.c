@@ -14,15 +14,50 @@
 // --------------------------------------------------------------------------------------------- //
 
 #define GAME_WIDTH 80
+#define PLAYERS_DATA_PATH "players.data"
 
 // --------------------------------------------------------------------------------------------- //
 
-static void put_game_logo(px_t width, position_t position);
+int curr_players_page = 0;
+int maxium_players;
+
+// --------------------------------------------------------------------------------------------- //
+
+typedef struct player_t {
+    char *name;
+    int level;
+    int copper;
+    int iron;
+    int gold;
+} player_t;
+
+typedef struct players_array_t {
+    player_t **players;
+    int count;
+    int length;
+} players_array_t;
+
+// --------------------------------------------------------------------------------------------- //
+
 static page_return_code_t load_main_page(px_t height, px_t width, bool unkown_command);
 static page_return_code_t load_not_found_page(px_t height, px_t width);
-static page_return_code_t load_pregame_setting_page(px_t height, px_t width, bool unkown_command);
+static page_return_code_t load_error_page(px_t height, px_t width);
 static page_return_code_t load_game(px_t height, px_t width);
 static page_return_code_t load_after_game_page(px_t height, px_t width, bool unkown_command);
+static void put_game_logo(px_t width, position_t position);
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, bool unkown_command);
+static page_return_code_t load_choose_player_page(px_t height, px_t width, bool unkown_command);
+
+static player_t *create_player(char* name, int level, int copper, int iron, int gold);
+static player_t *create_player_from_string(char* string);
+static void release_player(player_t *player);
+static players_array_t *create_players_array();
+static void release_players_array(players_array_t *players_array);
+static player_t *add_to_players_array(players_array_t *players_array, player_t *player);
+static players_array_t *load_players(const char* file_path);
+static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
+static bool find_player(const char *name);
+static page_t choose_pregame_page(void);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -36,25 +71,61 @@ page_t find_page(page_t current_page, const char *command)
         } else if (STR_EQ(command, "a") || STR_EQ(command, "A") || STR_EQ(command, "about") || STR_EQ(command, "ABOUT")) {
             return ABOUT_PAGE;
         } else if (STR_EQ(command, "p") || STR_EQ(command, "P") || STR_EQ(command, "play") || STR_EQ(command, "PLAY")) {
-            return PREGAME_SETTING_PAGE;
+            return choose_pregame_page();
         }
         return NO_PAGE;
 
     case PREGAME_SETTING_PAGE:
-        if (STR_EQ(command, "s") || STR_EQ(command, "S") || STR_EQ(command, "start game") || STR_EQ(command, "START GAME")) {
+        if (STR_EQ(command, "c") || STR_EQ(command, "C") || STR_EQ(command, "create player") || STR_EQ(command, "CREATE PLAYER")) {
             return GAME_PAGE;
         } else if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
             return MAIN_PAGE;
+        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+            return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
         return NO_PAGE;
 
     case AFTER_GAME_PAGE:
         if (STR_EQ(command, "n") || STR_EQ(command, "N") || STR_EQ(command, "new game") || STR_EQ(command, "NEW GAME")) {
-            return PREGAME_SETTING_PAGE;
+            return choose_pregame_page();
         } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
         return NO_PAGE;
+
+    case PRE_CREATE_NEW_PLAYER_PAGE:
+        if (STR_EQ(command, "c") || STR_EQ(command, "C") || STR_EQ(command, "create player") || STR_EQ(command, "CREATE PLAYER")) {
+            return CREATE_NEW_PLAYER_PAGE;
+        } else if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
+            return MAIN_PAGE;
+        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+            return QUIT_WITHOUT_CONFIRMATION_PAGE;
+        }
+        return NO_PAGE;
+
+    case CHOOSE_PLAYER_PAGE:
+        if (STR_EQ(command, "b") || STR_EQ(command, "B") || STR_EQ(command, "back") || STR_EQ(command, "BACK")) {
+            if (curr_players_page == 0) {
+                return MAIN_PAGE;
+            } else {
+                curr_players_page--;
+            }
+        } else if (STR_EQ(command, "q") || STR_EQ(command, "Q") || STR_EQ(command, "quit") || STR_EQ(command, "QUIT")) {
+            return QUIT_WITHOUT_CONFIRMATION_PAGE;
+        } else if (STR_EQ(command, "c") || STR_EQ(command, "C") || STR_EQ(command, "create player") || STR_EQ(command, "CREATE PLAYER")) {
+            return CREATE_NEW_PLAYER_PAGE;
+        } else if (STR_EQ(command, "n") || STR_EQ(command, "N") || STR_EQ(command, "next") || STR_EQ(command, "NEXT")) {
+            curr_players_page++;
+            if ((curr_players_page * 3) > maxium_players) {
+                curr_players_page--;
+            }
+            return CHOOSE_PLAYER_PAGE;
+        }
+
+        if(find_player(command)) {
+            return GAME_PAGE;
+        }
+        return CHOOSE_PLAYER_PAGE;
 
     default:
         return NO_PAGE;
@@ -69,14 +140,40 @@ page_return_code_t load_page(page_t page, px_t height, px_t width, bool terminal
         return load_main_page(height, width, terminal_signal_unkwnon_commands);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
         return ERROR;
-    case PREGAME_SETTING_PAGE:
-        return load_pregame_setting_page(height, width, terminal_signal_unkwnon_commands);
     case GAME_PAGE:
         return load_game(height, GAME_WIDTH);
     case AFTER_GAME_PAGE:
         return load_after_game_page(height, width, terminal_signal_unkwnon_commands);
+    case PRE_CREATE_NEW_PLAYER_PAGE:
+        return load_pre_create_new_player_page(height, width, terminal_signal_unkwnon_commands);
+    case CHOOSE_PLAYER_PAGE:
+        return load_choose_player_page(height, width, terminal_signal_unkwnon_commands);
+    case ERROR_PAGE:
+        return load_error_page(height, width);
     default:
         return load_not_found_page(height, width);
+    }
+}
+
+const char *convert_page_2_string(page_t page)
+{
+    switch (page)
+    {
+    case NO_PAGE: return "no page";
+    case MAIN_PAGE: return "Main page";
+    case QUIT_WITHOUT_CONFIRMATION_PAGE: return "Quit Without Confirmation page";
+    case ABOUT_PAGE: return "About page";
+    case PREGAME_SETTING_PAGE: return "Pregame Setting page";
+    case PRE_CREATE_NEW_PLAYER_PAGE: return "Pre-create New Player Page";
+    case CREATE_NEW_PLAYER_PAGE: return "Create New Player page";
+    case CHOOSE_PLAYER_PAGE: return "Choose Player page";
+    case NOT_FOUND_PAGE: return "Not Found page";
+    case GAME_PAGE: return "Game page";
+    case BACK_PAGE: return "Back page";
+    case AFTER_GAME_PAGE: return "After Game page";
+    case ERROR_PAGE: return "Error page";
+    default:
+        break;
     }
 }
 
@@ -122,7 +219,7 @@ static page_return_code_t load_not_found_page(px_t height, px_t width)
     return ERROR;
 }
 
-static page_return_code_t load_pregame_setting_page(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_error_page(px_t height, px_t width)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -130,13 +227,319 @@ static page_return_code_t load_pregame_setting_page(px_t height, px_t width, boo
 
     put_empty_row(1);
     put_game_logo(width, CENTER);
-    put_empty_row(3);
-    put_text("[TODO] In working process...", width, CENTER);
-    put_empty_row(1);
-    put_text("START GAME [S]", width, CENTER);
-    put_text("BACK [B]", width, CENTER);
-    put_empty_row(4);
+    put_empty_row(5);
+    put_text("Ooopsie, something bad happened ):", width, CENTER);
+    put_empty_row(9);
 
+    return ERROR;
+}
+
+static player_t *create_player(char* name, int level, int copper, int iron, int gold)
+{
+    player_t *player = malloc(sizeof(player_t));
+    if (player == NULL) {
+        return NULL;
+    }
+
+    player->name = malloc(strlen(name) + 1);
+    if (player->name == NULL) {
+        free(player);
+        return NULL;
+    }
+
+    strcpy(player->name, name);
+
+    player->level = level; player->copper = copper; player->iron; player->iron;
+    return player;
+}
+
+static player_t *create_player_from_string(char* string)
+{
+    const char* DELIMITER = ";";
+
+    char* token;
+    char* line_copy = strdup(string);
+    int level, copper, iron, gold;
+
+    // check name is present
+    token = strtok(line_copy, DELIMITER);
+    if (token == NULL) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return NULL;
+    }
+    char *name = strdup(token);
+
+    // check level
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &level) || level < 0) {
+        free(line_copy); free(name);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return NULL;
+    }
+
+    // check copper
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &copper) || copper < 0) {
+        free(line_copy); free(name);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return NULL;
+    }
+
+    // check iron
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &iron) || iron < 0) {
+        free(line_copy); free(name);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return NULL;
+    }
+
+    // check gold
+    token = strtok(NULL, DELIMITER);
+    strip_newline(token);
+    if (token == NULL || !convert_string_2_int(token, &gold) || gold < 0) {
+        free(line_copy); free(name);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return NULL;
+    }
+
+    // check that line is completely read
+    if (strtok(NULL, DELIMITER) != NULL) {
+        free(line_copy); free(name);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return NULL;
+    }
+    
+    player_t *player = create_player(name, level, copper, iron, gold);
+    if (player == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        free(line_copy); free(name);
+        return NULL;
+    }
+
+    free(line_copy); free(name);
+    return player;
+}
+
+static void release_player(player_t *player)
+{
+    if (player != NULL) {
+        free(player->name);
+        free(player);
+    }
+}
+
+static players_array_t *create_players_array()
+{
+    players_array_t *array = malloc(sizeof(players_array_t));
+    if (array == NULL) {
+        return NULL;
+    }
+
+    array->count = 0;
+    array->length = 4;
+    array->players = malloc(sizeof(player_t*) * array->length);
+
+    if (array->players == NULL) {
+        free(array);
+        return NULL;
+    }
+
+    return array;
+}
+
+static void release_players_array(players_array_t *players_array)
+{
+    if (players_array == NULL) {
+        return;
+    }
+
+    for (int i = 0; i < players_array->count; ++i) {
+        release_player(players_array->players[i]);
+    }
+
+    free(players_array->players);
+    free(players_array);
+}
+
+static player_t *add_to_players_array(players_array_t *players_array, player_t *player)
+{
+    if (players_array == NULL || player == NULL) {
+        return NULL;
+    }
+
+    if (players_array->count >= players_array->length) {
+        players_array->length *= 2;
+        player_t **new_players_array = realloc(players_array->players, sizeof(player_t*) * players_array->length);
+        if (new_players_array == NULL) {
+            return NULL;
+        }
+        players_array->players = new_players_array;
+    }
+
+    players_array->players[players_array->count++] = player;
+    return player;
+}
+
+static players_array_t *load_players(const char* file_path)
+{
+    players_array_t *players = create_players_array();
+    if (players == NULL) {
+        return NULL;
+    }
+
+    if (access(file_path, F_OK) != 0) {
+        return players;
+    }
+
+    FILE* file = fopen(file_path, "r");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        return NULL;
+    }
+
+    char* line = NULL;
+    size_t line_length = 0;
+    ssize_t bytes_read;
+
+    while ((bytes_read = getline(&line, &line_length, file)) != -1) {
+
+        player_t *player = create_player_from_string(line);
+        if (player == NULL) {
+            release_players_array(players);
+            free(line);
+            fclose(file);
+            return NULL;
+        }
+
+        if (add_to_players_array(players, player) == NULL) {
+            resolve_error(MEM_ALOC_FAILURE);
+            release_players_array(players);
+            free(line);
+            fclose(file);
+            return NULL;
+        }
+    }
+
+    free(line);
+    fclose(file);
+    return players;
+}
+
+static page_t choose_pregame_page(void)
+{
+    players_array_t *players = load_players(PLAYERS_DATA_PATH);
+    if (players == NULL) {
+        return ERROR_PAGE;
+    }
+
+    int players_count = players->count;
+    release_players_array(players);
+    maxium_players = players_count;
+
+    if (players_count > 0) {
+        return CHOOSE_PLAYER_PAGE;
+    } else {
+        return PRE_CREATE_NEW_PLAYER_PAGE;
+    }
+}
+
+static bool find_player(const char *name)
+{
+    players_array_t *players = load_players(PLAYERS_DATA_PATH);
+    if (players == NULL) {
+        return false;
+    }
+
+    bool found = false;
+    for (int i = 0; i < players->count; ++i) {
+        if (STR_EQ(name, players->players[i]->name)) {
+            found = true;
+            break;
+        }
+    }
+
+    release_players_array(players);
+    return found;
+}
+
+static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin)
+{
+    char result[button_width - 2 - 6];
+
+    int written = snprintf(result, sizeof(result), "%s: LVL %d", player->name, player->level);
+    if (written >= sizeof(result)) {
+        strcpy(result, "Error: too long name!");
+    }
+
+    if (written < sizeof(result)) {
+        result[written] = '\0';
+    }
+
+    put_button(width, button_width, button_height, result, CENTER, last, row_margin);
+}
+
+static page_return_code_t load_choose_player_page(px_t height, px_t width, bool unkown_command)
+{
+    players_array_t *players = load_players(PLAYERS_DATA_PATH);
+    if (players == NULL) {
+        return ERROR;
+    }
+
+    clear_canvas();
+    draw_borders(height, width);
+    set_cursor_at_beginning_of_canvas();
+
+    put_empty_row(1);
+    put_game_logo(width, CENTER);
+    put_empty_row(1);
+    put_text("Enter the name of player account you want to play.", width, CENTER);
+    put_empty_row(1);
+
+    int rest = players->count - (curr_players_page * 3);
+    if (rest == 1) {
+        put_player(width, 30, 5, players->players[curr_players_page * 3], false, 0);
+    } else if (rest == 2) {
+        put_player(width / 2, 30, 5, players->players[curr_players_page * 3], true, 0);
+        write_text(" ");
+        put_player(width / 2, 30, 5, players->players[(curr_players_page * 3) + 1], false, width / 2);
+    } else {
+        put_player(width / 3, 30, 5, players->players[curr_players_page * 3], true, 0);
+        write_text(" ");
+        put_player(width / 3, 30, 5, players->players[(curr_players_page * 3) + 1], true, width / 3);
+        write_text(" ");
+        put_player(width / 3, 30, 5, players->players[(curr_players_page * 3) + 2], false, (2 * width) / 3);
+    }
+
+    put_empty_row(1);
+    put_text("\t\t\t BACK [B]     CREATE PLAYER [C]     QUIT [Q]     NEXT [N]", width, LEFT);
+    put_empty_row(1);
+
+    release_players_array(players);
+
+     if (render_terminal(width, unkown_command) == -1) {
+        return ERROR;
+    }
+    
+    return SUCCES;
+}
+
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, bool unkown_command)
+{
+    clear_canvas();
+    draw_borders(height, width);
+    set_cursor_at_beginning_of_canvas();
+
+    put_empty_row(1);
+    put_game_logo(width, CENTER);
+    put_empty_row(2);
+    put_text("No saved players accounts were found.", width, CENTER);
+    put_empty_row(1);
+    put_text("CREATE PLAYER [C]", width, CENTER);
+    put_text("BACK [B]", width, CENTER);
+    put_text("QUIT [Q]", width, CENTER);
+    put_empty_row(4);
+    
     if (render_terminal(width, unkown_command) == -1) {
         return ERROR;
     }
@@ -309,24 +712,6 @@ static page_return_code_t load_game(px_t height, px_t width)
     release_pixel_buffer(pixel_buffer2);
 
     return SUCCESS_GAME;
-}
-
-const char *convert_page_2_string(page_t page)
-{
-    switch (page)
-    {
-    case NO_PAGE: return "no page";
-    case MAIN_PAGE: return "Main page";
-    case QUIT_WITHOUT_CONFIRMATION_PAGE: return "Quit Without Confirmation page";
-    case ABOUT_PAGE: return "About page";
-    case PREGAME_SETTING_PAGE: return "Pregame Setting page";
-    case NOT_FOUND_PAGE: return "Not Found page";
-    case GAME_PAGE: return "Game page";
-    case BACK_PAGE: return "Back page";
-    case AFTER_GAME_PAGE: return "After Game page";
-    default:
-        break;
-    }
 }
 
 static void put_game_logo(px_t width, position_t position)
