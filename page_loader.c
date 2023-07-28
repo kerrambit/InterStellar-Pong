@@ -609,6 +609,15 @@ static bool check_name(const char *name)
     return true;
 }
 
+/*
+
+    TODO
+
+    - check uniqueness of player's name
+    - when saving new player, player must be written to the file
+
+*/
+
 static page_return_code_t load_create_new_player_page(px_t height, px_t width, bool unkown_command)
 {
     clear_canvas();
