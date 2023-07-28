@@ -126,7 +126,7 @@ int process_command(char c, char **command)
     return 0;
 }
 
-int render_terminal(px_t line_width, bool unkown_command)
+int render_terminal(px_t line_width, bool unkown_command, const char *volunatary_mess, int mess_length)
 {
     if (IS_TERMINAL_ENABLED) {
 
@@ -147,14 +147,21 @@ int render_terminal(px_t line_width, bool unkown_command)
 
         put_horizontal_line(line_width - 1, '=');
         write_text("|| > ");
+
         if (unkown_command) {
-            printf("\033[3m\033[93mUnknown command.\033[0m"); // TODO put it in write_text()
-            put_text("||", 90, RIGHT);
+            if (volunatary_mess == NULL) {
+                printf("\033[3m\033[93mUnknown command.\033[0m");
+                put_text("||", 90, RIGHT);
+            } else {
+                write_text(volunatary_mess);
+                put_text("||", line_width - mess_length - buffer_size - 7, RIGHT);
+            }
+            
         } else if (strlen(line) != 0) {
             write_text(line);
             put_text("||", line_width - 7 - buffer_size, RIGHT);
         } else {
-            printf("\033[3m\033[90mEnter your commands.\033[0m"); // TODO put it in write_text()
+            printf("\033[3m\033[90mEnter your commands.\033[0m");
             put_text("||", 86, RIGHT);
         }
         

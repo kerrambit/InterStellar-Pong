@@ -16,7 +16,7 @@
 #include <stdbool.h>
 
 int enable_terminal();
-int render_terminal(px_t line_width, bool unkown_command);
+int render_terminal(px_t line_width, bool unkown_command, const char *volunatary_mess, int mess_length);
 int process_command(char c, char **command);
 int remove_terminal_data();
 
