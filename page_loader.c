@@ -10,31 +10,16 @@
 #include "draw.h"
 #include "errors.h"
 #include "terminal.h"
+#include "interstellar_pong.h"
+#include "player.h"
 
 // --------------------------------------------------------------------------------------------- //
 
 #define COMMAND_EQ(command, ch, CH, word, WORD) (STR_EQ(command, ch) || STR_EQ(command, CH) || STR_EQ(command, word) || STR_EQ(command, WORD))
 #define GAME_WIDTH 80
 #define PLAYERS_DATA_PATH "players.data"
-#define INVALID_NAME ";"
-#define NOT_UNIQUE_NAME ";;"
-#define NO_NAME_ENTERED ";;;"
 
 // --------------------------------------------------------------------------------------------- //
-
-typedef struct player_t {
-    char *name;
-    int level;
-    int copper;
-    int iron;
-    int gold;
-} player_t;
-
-typedef struct players_array_t {
-    player_t **players;
-    int count;
-    int length;
-} players_array_t;
 
 // ---------------------------------------- GLOBAL VARIABLES ----------------------------------- //
 
@@ -89,13 +74,6 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, bool unk
 static page_return_code_t load_not_found_page(px_t height, px_t width);
 static page_return_code_t load_error_page(px_t height, px_t width);
 static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, bool unkown_command);
-
-static player_t *create_player(char* name, int level, int copper, int iron, int gold);
-static player_t *create_player_from_string(char* string);
-static void release_player(player_t *player);
-static players_array_t *create_players_array();
-static void release_players_array(players_array_t *players_array);
-static player_t *add_to_players_array(players_array_t *players_array, player_t *player);
 
 static players_array_t *load_players(const char* file_path);
 static page_t choose_pregame_page(void);
@@ -358,153 +336,6 @@ static page_return_code_t load_error_page(px_t height, px_t width)
     return ERROR;
 }
 
-static player_t *create_player(char* name, int level, int copper, int iron, int gold)
-{
-    player_t *player = malloc(sizeof(player_t));
-    if (player == NULL) {
-        return NULL;
-    }
-
-    player->name = malloc(strlen(name) + 1);
-    if (player->name == NULL) {
-        free(player);
-        return NULL;
-    }
-
-    strcpy(player->name, name);
-
-    player->level = level; player->copper = copper; player->iron = iron; player->gold = gold;
-    return player;
-}
-
-static player_t *create_player_from_string(char* string)
-{
-    const char* DELIMITER = ";";
-
-    char* token;
-    char* line_copy = strdup(string);
-    int level, copper, iron, gold;
-
-    // check name is present
-    token = strtok(line_copy, DELIMITER);
-    if (token == NULL) {
-        free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
-    }
-    char *name = strdup(token);
-
-    // check level
-    token = strtok(NULL, DELIMITER);
-    if (token == NULL || !convert_string_2_int(token, &level) || level < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
-    }
-
-    // check copper
-    token = strtok(NULL, DELIMITER);
-    if (token == NULL || !convert_string_2_int(token, &copper) || copper < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
-    }
-
-    // check iron
-    token = strtok(NULL, DELIMITER);
-    if (token == NULL || !convert_string_2_int(token, &iron) || iron < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
-    }
-
-    // check gold
-    token = strtok(NULL, DELIMITER);
-    strip_newline(token);
-    if (token == NULL || !convert_string_2_int(token, &gold) || gold < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
-    }
-
-    // check that line is completely read
-    if (strtok(NULL, DELIMITER) != NULL) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
-    }
-    
-    player_t *player = create_player(name, level, copper, iron, gold);
-    free(line_copy); free(name);
-
-    if (player == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
-        return NULL;
-    }
-
-    return player;
-}
-
-static void release_player(player_t *player)
-{
-    if (player != NULL) {
-        free(player->name);
-        free(player);
-    }
-}
-
-static players_array_t *create_players_array()
-{
-    players_array_t *array = malloc(sizeof(players_array_t));
-    if (array == NULL) {
-        return NULL;
-    }
-
-    array->count = 0;
-    array->length = 4;
-    array->players = malloc(sizeof(player_t*) * array->length);
-
-    if (array->players == NULL) {
-        free(array);
-        return NULL;
-    }
-
-    return array;
-}
-
-static void release_players_array(players_array_t *players_array)
-{
-    if (players_array == NULL) {
-        return;
-    }
-
-    for (int i = 0; i < players_array->count; ++i) {
-        release_player(players_array->players[i]);
-    }
-
-    free(players_array->players);
-    free(players_array);
-}
-
-static player_t *add_to_players_array(players_array_t *players_array, player_t *player)
-{
-    if (players_array == NULL || player == NULL) {
-        return NULL;
-    }
-
-    if (players_array->count >= players_array->length) {
-        players_array->length *= 2;
-        player_t **new_players_array = realloc(players_array->players, sizeof(player_t*) * players_array->length);
-        if (new_players_array == NULL) {
-            return NULL;
-        }
-        players_array->players = new_players_array;
-    }
-
-    players_array->players[players_array->count++] = player;
-    return player;
-}
-
 static players_array_t *load_players(const char* file_path)
 {
     players_array_t *players = create_players_array();
@@ -611,6 +442,11 @@ static player_t *find_player(const char *name, const char *file_path)
         }
     }
 
+    if (found_player == NULL) {
+        release_players_array(players);
+        return NULL;
+    }
+
     player_t *player_copy = create_player(found_player->name, found_player->level, found_player->copper, found_player->iron, found_player->gold);
     
     release_players_array(players);
@@ -622,7 +458,19 @@ static player_t *find_player(const char *name, const char *file_path)
     return player_copy;
 }
 
-static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin) // TODO: check this
+/**
+ * @brief 
+ * 
+ * @param width 
+ * @param button_width 
+ * @param button_height 
+ * @param player 
+ * @param last 
+ * @param row_margin
+ * 
+ * @warning Minimal <button_width> value is 21 px_t. This value is set to the length of warning string used if the player's name is too long!
+ */
+static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin)
 {
     char result[button_width - 2 - 6]; // two characters for border and 6 characters for text ": LVL "
 
@@ -655,19 +503,18 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, bool 
     put_text("Enter the name of player account you want to play.", width, CENTER);
     put_empty_row(1);
 
+    int row_margin = 0;
     int rest = players->count - (gl_curr_players_page_index * 3);
-    if (rest == 1) {
-        put_player(width, 30, 5, players->players[gl_curr_players_page_index * 3], false, 0); // TODO: simplify this thing
-    } else if (rest == 2) {
-        put_player(width / 2, 30, 5, players->players[gl_curr_players_page_index * 3], true, 0);
-        write_text(" ");
-        put_player(width / 2, 30, 5, players->players[(gl_curr_players_page_index * 3) + 1], false, width / 2);
-    } else {
-        put_player(width / 3, 30, 5, players->players[gl_curr_players_page_index * 3], true, 0);
-        write_text(" ");
-        put_player(width / 3, 30, 5, players->players[(gl_curr_players_page_index * 3) + 1], true, width / 3);
-        write_text(" ");
-        put_player(width / 3, 30, 5, players->players[(gl_curr_players_page_index * 3) + 2], false, (2 * width) / 3);
+    if (rest > 3) {
+        rest = 3;
+    }
+    
+    for (int i = 0; i < rest; ++i) {
+        if (i > 0) {
+            write_text(" ");
+        }
+        put_player(width / rest, 30, 5, players->players[(gl_curr_players_page_index * 3) + i], (i == (rest - 1) ? false : true), row_margin);
+        row_margin += (width / rest);
     }
 
     put_empty_row(1);
@@ -862,119 +709,50 @@ static int init_file_descriptor_monitor()
 
 static page_return_code_t load_game(px_t height, px_t width)
 {
+    game_t *game = init_game(gl_player_choosen_to_game, height, width);
+    if (game == NULL) {
+        release_player(gl_player_choosen_to_game);
+        return ERROR;
+    }
+
     release_player(gl_player_choosen_to_game);
-    srand(time(NULL));
+
+    scene_t *scene = init_scene(game);
+    if (scene == NULL) {
+        release_game(game);
+        return ERROR;
+    }
 
     pixel_buffer_t *pixel_buffer1 = create_pixel_buffer(height, width);
+    if (pixel_buffer1 == NULL) {
+        release_game(game);
+        release_scene(scene);
+        return ERROR;
+    }
+
     pixel_buffer_t *pixel_buffer2 = create_pixel_buffer(height, width);
-
-    if (pixel_buffer1 == NULL) { resolve_error(MEM_ALOC_FAILURE); return ERROR; }
-    if (pixel_buffer2 == NULL) { resolve_error(MEM_ALOC_FAILURE); release_pixel_buffer(pixel_buffer1); return ERROR; }
-
-    rectangle_t *ball = create_rectangle(37, 8, 1, 1, 2, 1, WHITE, "ball");
-    rectangle_t *player = create_rectangle(width - 5, 5, 1, 5, 0, 0, GREEN, "player");
-    rectangle_t *meteor = create_rectangle(15, 13, 2, 2, 0, 0, YELLOW, "meteor 1");
-    rectangle_t *enemy = create_rectangle(5, 5, 1, 5, 0, 0, RED, "enemy");
-
-    scene_t *scene = create_scene();
-    add_to_scene(scene, ball); // TODO: make here and also when creating object macro which cleans all the mess
-    add_to_scene(scene, player);
-    add_to_scene(scene, meteor);
-    add_to_scene(scene, enemy);
+    if (pixel_buffer2 == NULL) {
+        release_game(game);
+        release_scene(scene);
+        release_pixel_buffer(pixel_buffer1);
+        return ERROR;
+    }
 
     clear_canvas();
+    start_game(game);
 
-    bool game_running = true;
-    while (game_running) {
+    while (get_game_state(game) != STOPPED) {
 
         draw_borders(height + 1, width);
         set_cursor_at_beginning_of_canvas();
         reset_pixel_buffer(pixel_buffer2);
 
-        int ready_fds = init_file_descriptor_monitor();
-        if (ready_fds > 0) {
-
+        if (init_file_descriptor_monitor() > 0) {
             int c = getchar();
-
-            if (c == 'w' || c == 'W') {
-                if ((int)player->position_y - 2 < 0) {
-                    player->position_y = 0;
-                } else {
-                    player->position_y -= 2;
-                }
-            } else if (c == 's' || c == 'S') {
-                player->position_y += 2;
-                if (player->position_y > pixel_buffer1->height - player->side_length_2) {
-                    player->position_y = pixel_buffer1->height - player->side_length_2;
-                }
-            } else if (c == 'q' || c == 'Q') {
-                game_running = false;
-            }
+            handle_event(game, c);
         }
 
-        ball->position_x += ball->x_speed;
-        ball->position_y += ball->y_speed;
-        if(ball->position_x >= pixel_buffer1->width - 2 || ball->position_x <= 0) {
-            ball->x_speed *= -1;
-        }
-        if (ball->position_y >= pixel_buffer1->height - ball->side_length_2 || ball->position_y <= 0) {
-            ball->y_speed *= -1; 
-        }        
-
-        int ball_center = ball->position_y + (ball->side_length_2 / 2);
-        int paddle_center = enemy->position_y + (enemy->side_length_2 / 2);
-
-        if (ball_center < paddle_center) {
-            enemy->position_y -= 2;
-        } else if (ball_center > paddle_center) {
-            enemy->position_y += 2;
-        }
-
-        enemy->position_y += rand() % 3;
-
-        if (enemy->position_y < 0) {
-            enemy->position_y = 0;
-        } else if (enemy->position_y + enemy->side_length_2 > pixel_buffer1->height) {
-            enemy->position_y = pixel_buffer1->height - enemy->side_length_2;
-        }
-
-        compute_object_pixels_in_buffer(pixel_buffer2, player, RECTANGLE);
-        compute_object_pixels_in_buffer(pixel_buffer2, meteor, RECTANGLE);
-        compute_object_pixels_in_buffer(pixel_buffer2, enemy, RECTANGLE);
-        ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer2, ball, RECTANGLE);
-
-        if (collision_ID == enemy->ID || collision_ID == player->ID) {
-
-            int paddle_center = player->position_y + (player->side_length_2 / 2);
-            int ball_center = ball->position_y + (ball->side_length_2 / 2);
-            int vertical_distance = ball_center - paddle_center;
-
-            if (ball->y_speed == 0) {
-                ball->y_speed = 1;
-            }
-            if (vertical_distance > 0) {
-                ball->y_speed = abs(ball->y_speed);
-            } else if (vertical_distance < 0) {
-                ball->y_speed = -1 * abs(ball->y_speed);
-            } else {
-                ball->y_speed = 0 + rand() % 1;
-            }
-
-            ball->x_speed = -ball->x_speed;
-        }
-
-        if (ball->position_x <= 2) {
-            game_running = false;
-        } else if (ball->position_x + ball->side_length_1 >= pixel_buffer1->width) {
-            game_running = false;
-        }
-
-        if (collision_ID == meteor->ID) {
-            meteor->colour = BLACK;
-            meteor->position_x = (rand() % (width - 10)) + 5;
-            meteor->position_y = (rand() % (height + 10)) + 5;
-            meteor->colour = YELLOW;
-        }
+        update_scene(game, pixel_buffer2);
 
         pixel_buffer_t *tmp_buffer = pixel_buffer1;
         pixel_buffer1 = pixel_buffer2;
@@ -984,7 +762,7 @@ static page_return_code_t load_game(px_t height, px_t width)
         usleep(70000);
     }
 
-    release_scene(scene);
+    release_game(game);
     release_pixel_buffer(pixel_buffer1);
     release_pixel_buffer(pixel_buffer2);
 

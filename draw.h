@@ -30,7 +30,17 @@ typedef enum colour_t {
     RED,
     GREEN,
     BLUE,
-    YELLOW
+    YELLOW,
+    MAGENTA,
+    CYAN,
+    LIGHT_GRAY,
+    DARK_GRAY,
+    LIGHT_RED,
+    LIGHT_GREEN,
+    LIGHT_BLUE,
+    LIGHT_YELLOW,
+    LIGHT_MAGENTA,
+    LIGHT_CYAN
 } colour_t;
 
 typedef enum object_type_t {
@@ -97,6 +107,7 @@ void release_rectangle(rectangle_t *rectangle);
 
 scene_t *create_scene();
 rectangle_t *add_to_scene(scene_t *scene, rectangle_t *object);
+rectangle_t *remove_object_from_scene(scene_t *scene, rectangle_t *object);
 void release_scene(scene_t *scene);
 
 #endif

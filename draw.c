@@ -230,6 +230,7 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
 {
     pixel_buffer_t *pixel_buffer = malloc(sizeof(pixel_buffer_t));
     if (pixel_buffer == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
         return NULL;
     }
 
@@ -237,6 +238,7 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
     pixel_buffer->buff = calloc(height * width, sizeof(unsigned char));
 
     if (pixel_buffer->buff == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
         free(pixel_buffer);
         return NULL;
     }
@@ -296,6 +298,42 @@ rectangle_t *add_to_scene(scene_t *scene, rectangle_t *object) {
     return object;
 }
 
+rectangle_t *remove_object_from_scene(scene_t *scene, rectangle_t *object)
+{
+    if (scene == NULL || object == NULL) {
+        return NULL;
+    }
+
+    int index = -1;
+    for (int i = 0; i < scene->number_of_objects; i++) {
+        if (scene->scene[i] == object) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1) {
+        return NULL;
+    }
+
+    for (int i = index; i < scene->number_of_objects - 1; i++) {
+        scene->scene[i] = scene->scene[i + 1];
+    }
+
+    scene->number_of_objects--;
+
+    if (scene->number_of_objects < scene->length_of_arr / 2) {
+        scene->length_of_arr /= 2;
+        rectangle_t **new_scene_arr = realloc(scene->scene, sizeof(rectangle_t*) * scene->length_of_arr);
+        if (new_scene_arr == NULL) {
+            return NULL;
+        }
+        scene->scene = new_scene_arr;
+    }
+
+    return object;
+}
+
 void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene)
 {
     for (unsigned int i = 0; i < pixel_buffer->height; ++i) {
@@ -317,6 +355,26 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene)
                     printf("\033[0;94m█\033[0m"); break;
                 case YELLOW:
                     printf("\033[0;93m█\033[0m"); break;
+                case MAGENTA:
+                    printf("\033[0;95m█\033[0m"); break;
+                case CYAN:
+                    printf("\033[0;96m█\033[0m"); break;
+                case LIGHT_GRAY:
+                    printf("\033[0;37m█\033[0m"); break;
+                case DARK_GRAY:
+                    printf("\033[0;90m█\033[0m"); break;
+                case LIGHT_RED:
+                    printf("\033[0;31m█\033[0m"); break;
+                case LIGHT_GREEN:
+                    printf("\033[0;32m█\033[0m"); break;
+                case LIGHT_BLUE:
+                    printf("\033[0;34m█\033[0m"); break;
+                case LIGHT_YELLOW:
+                    printf("\033[0;33m█\033[0m"); break;
+                case LIGHT_MAGENTA:
+                    printf("\033[0;35m█\033[0m"); break;
+                case LIGHT_CYAN:
+                    printf("\033[0;36m█\033[0m"); break;
                 default:
                     CHAR_RIGHT(); break;
             }
@@ -335,6 +393,10 @@ void release_pixel_buffer(pixel_buffer_t *pixel_buffer)
 
 ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type)
 {
+    if (obj == NULL) {
+        return UNDEFINIED_ID;
+    }
+
     switch (obj_type)
     {
 
