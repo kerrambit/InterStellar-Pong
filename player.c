@@ -6,7 +6,17 @@
 #include "errors.h"
 #include "utils.h"
 
-player_t *create_player(char* name, int level, int copper, int iron, int gold)
+// --------------------------------------------------------------------------------------------- //
+
+#define CLEAN_AND_RETURN_WITH_FAILURE free(line_copy); free(name); return NULL
+
+// --------------------------------------------------------------------------------------------- //
+
+static bool save_number(char *token, int *data_holder);
+
+// --------------------------------------------------------------------------------------------- //
+
+player_t *create_player(char* name, int level, int stone, int copper, int iron, int gold)
 {
     player_t *player = malloc(sizeof(player_t));
     if (player == NULL) {
@@ -21,8 +31,18 @@ player_t *create_player(char* name, int level, int copper, int iron, int gold)
 
     strcpy(player->name, name);
 
-    player->level = level; player->copper = copper; player->iron = iron; player->gold = gold;
+    player->level = level; player->stone = stone; player->copper = copper; player->iron = iron; player->gold = gold;
     return player;
+}
+
+static bool save_number(char *token, int *data_holder)
+{
+    if (token == NULL || !convert_string_2_int(token, data_holder) || *data_holder < 0) {
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    return true;
 }
 
 player_t *create_player_from_string(char* string)
@@ -31,7 +51,7 @@ player_t *create_player_from_string(char* string)
 
     char* token;
     char* line_copy = strdup(string);
-    int level, copper, iron, gold;
+    int level, stone, copper, iron, gold;
 
     // check name is present
     token = strtok(line_copy, DELIMITER);
@@ -44,45 +64,42 @@ player_t *create_player_from_string(char* string)
 
     // check level
     token = strtok(NULL, DELIMITER);
-    if (token == NULL || !convert_string_2_int(token, &level) || level < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
+    if (!save_number(token, &level)) {
+        CLEAN_AND_RETURN_WITH_FAILURE;
+    }
+
+    // check stone
+    token = strtok(NULL, DELIMITER);
+    if (!save_number(token, &stone)) {
+        CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check copper
     token = strtok(NULL, DELIMITER);
-    if (token == NULL || !convert_string_2_int(token, &copper) || copper < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
+    if (!save_number(token, &copper)) {
+        CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check iron
     token = strtok(NULL, DELIMITER);
-    if (token == NULL || !convert_string_2_int(token, &iron) || iron < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
+    if (!save_number(token, &iron)) {
+        CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check gold
     token = strtok(NULL, DELIMITER);
     strip_newline(token);
-    if (token == NULL || !convert_string_2_int(token, &gold) || gold < 0) {
-        free(line_copy); free(name);
-        resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
+    if (!save_number(token, &gold)) {
+        CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check that line is completely read
     if (strtok(NULL, DELIMITER) != NULL) {
-        free(line_copy); free(name);
         resolve_error(INVALID_DATA_IN_FILE);
-        return NULL;
+        CLEAN_AND_RETURN_WITH_FAILURE;
     }
     
-    player_t *player = create_player(name, level, copper, iron, gold);
+    player_t *player = create_player(name, level, stone, copper, iron, gold);
     free(line_copy); free(name);
 
     if (player == NULL) {

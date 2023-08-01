@@ -17,7 +17,7 @@
 
 // --------------------------------------------------------------------------------------------- //
 
-static unsigned char ID = 6;
+static unsigned char ID = 0;
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -142,7 +142,9 @@ void put_button(px_t width, px_t button_width, px_t button_height, const char *t
     }
 
     if (row_mode) {
-        for (int i = 0; i < button_height - 1; ++i) { ROW_UP(); }
+        for (int i = 0; i < button_height - 1; ++i) {
+            ROW_UP();
+        }
     } else {
         CURSOR_TO_BEGINNING_OF_LINE();
         ROW_DOWN();
@@ -154,7 +156,9 @@ static void display_button(px_t width, px_t height, px_t padding, const char *te
     CURSOR_TO_BEGINNING_OF_LINE();
     CHAR_RIGHT();
 
-    for (int i = 0; i < padding; ++i) {CHAR_RIGHT();}
+    for (int i = 0; i < padding; ++i) {
+        CHAR_RIGHT();
+    }
 
     printf("┌");
     for (int i = 0; i < width - 2; ++i) {
@@ -164,7 +168,9 @@ static void display_button(px_t width, px_t height, px_t padding, const char *te
 
     for (int i = 0; i < height - 2; ++i) {
         CHAR_RIGHT();
-        for (int i = 0; i < padding; ++i) {CHAR_RIGHT();}
+        for (int i = 0; i < padding; ++i) {
+            CHAR_RIGHT();
+        }
         printf("│");
 
         if (i == (height - 2) / 2) {
@@ -178,7 +184,9 @@ static void display_button(px_t width, px_t height, px_t padding, const char *te
     }
 
     CHAR_RIGHT();
-    for (int i = 0; i < padding; ++i) {CHAR_RIGHT();}
+    for (int i = 0; i < padding; ++i) {
+        CHAR_RIGHT();
+    }
 
     printf("└");
     for (int i = 0; i < width - 2; ++i) {
@@ -505,13 +513,23 @@ const char* colour_2_string(colour_t colour)
 {
     switch (colour)
     {
-    case BLACK:    return "black"; break;
-    case WHITE:    return "white"; break;
-    case RED:      return "red"; break;
-    case GREEN:    return "green"; break;
-    case BLUE:     return "blue"; break;
-    case YELLOW:   return "yellow"; break;
-    default:       return "unknown"; break;
+        case BLACK:         return "black"; break;
+        case WHITE:         return "white"; break;
+        case RED:           return "red"; break;
+        case GREEN:         return "green"; break;
+        case BLUE:          return "blue"; break;
+        case YELLOW:        return "yellow"; break;
+        case MAGENTA:       return "magenta"; break;
+        case CYAN:          return "cyan"; break;
+        case LIGHT_GRAY:    return "light_gray"; break;
+        case DARK_GRAY:     return "dark_gray"; break;
+        case LIGHT_RED:     return "light_red"; break;
+        case LIGHT_GREEN:   return "light_green"; break;
+        case LIGHT_BLUE:    return "light_blue"; break;
+        case LIGHT_YELLOW:  return "light_yellow"; break;
+        case LIGHT_MAGENTA: return "light_magenta"; break;
+        case LIGHT_CYAN:    return "light_cyan"; break;
+        default:            return "unknown"; break;
     }
 }
 

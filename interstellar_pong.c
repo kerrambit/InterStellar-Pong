@@ -4,10 +4,6 @@
 
 // --------------------------------------------------------------------------------------------- //
 
-#define KEYBOARD_PRESSED(user_keyboard, target_keyboard) (user_keyboard == target_keyboard)
-
-// --------------------------------------------------------------------------------------------- //
-
 static rectangle_t *find_object(game_t *game, const char *name);
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
@@ -48,9 +44,9 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     game->scene = NULL;
 
     if (player == NULL) {
-        game->player = create_player("-", 0, 0, 0, 0);
+        game->player = create_player("-", 0, 0, 0, 0, 0);
     } else {
-        game->player = create_player(player->name, player->level, player->copper, player->iron, player->gold);
+        game->player = create_player(player->name, player->level, player->stone, player->copper, player->iron, player->gold);
     }
 
     if (game->player == NULL) {

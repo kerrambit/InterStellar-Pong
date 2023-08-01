@@ -54,9 +54,7 @@ int main()
 
     // try to load and render main page
     if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, data) == ERROR) {
-        if (remove_terminal_data() == -1) {
-            resolve_error(FAILURE_OF_REMOVING_FILE);
-        }
+        (void)remove_terminal_data();
         tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
         release_plage_loader_inner_data(data);
         show_cursor();
@@ -103,7 +101,6 @@ int main()
     release_plage_loader_inner_data(data);
 
     if (remove_terminal_data() == -1) {
-        resolve_error(FAILURE_OF_REMOVING_FILE);
         show_cursor();
         return EXIT_FAILURE;
     }

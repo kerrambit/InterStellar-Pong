@@ -392,7 +392,7 @@ static int write_player_to_file(player_t *player, const char *file_path)
         return -1;
     }
 
-    int size = snprintf(NULL, 0, "\n%s;%d;%d;%d;%d", player->name, player->level, player->copper, player->iron, player->gold);
+    int size = snprintf(NULL, 0, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
 
     char *result = malloc(size + 1);
     if (result == NULL) {
@@ -401,7 +401,7 @@ static int write_player_to_file(player_t *player, const char *file_path)
         return -1;
     }
 
-    snprintf(result, size + 1, "\n%s;%d;%d;%d;%d", player->name, player->level, player->copper, player->iron, player->gold);
+    snprintf(result, size + 1, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
     fputs(result, file);
 
     free(result);
@@ -447,7 +447,7 @@ static player_t *find_player(const char *name, const char *file_path)
         return NULL;
     }
 
-    player_t *player_copy = create_player(found_player->name, found_player->level, found_player->copper, found_player->iron, found_player->gold);
+    player_t *player_copy = create_player(found_player->name, found_player->level, found_player->stone, found_player->copper, found_player->iron, found_player->gold);
     
     release_players_array(players);
     if (player_copy == NULL) {
@@ -561,7 +561,7 @@ static page_t handle_save_and_play(page_loader_inner_data_t *data)
         return CREATE_NEW_PLAYER_PAGE;
     }
 
-    data->player_choosen_to_game = create_player(data->curr_player_name, 0, 0, 0, 0);
+    data->player_choosen_to_game = create_player(data->curr_player_name, 0, 0, 0, 0, 0);
 
     free(data->curr_player_name);
     data->curr_player_name = NULL;
@@ -759,6 +759,9 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         pixel_buffer1 = pixel_buffer2;
         pixel_buffer2 = tmp_buffer;
         render_graphics(pixel_buffer1, scene);
+
+        write_text("\n\n");
+        put_text("[TODO] Live game stats...", width, CENTER);
 
         usleep(70000);
     }

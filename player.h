@@ -1,7 +1,7 @@
 /**
  * @file player.h
- * @author your name (you@domain.com)
- * @brief 
+ * @author Marek Eibel
+ * @brief (...)
  * @version 0.1
  * @date 2023-07-30
  * 
@@ -19,6 +19,7 @@
 typedef struct player_t {
     char *name;
     int level;
+    int stone;
     int copper;
     int iron;
     int gold;
@@ -30,7 +31,7 @@ typedef struct players_array_t {
     int length;
 } players_array_t;
 
-player_t *create_player(char* name, int level, int copper, int iron, int gold);
+player_t *create_player(char* name, int level, int stone, int copper, int iron, int gold);
 player_t *create_player_from_string(char* string);
 void release_player(player_t *player);
 players_array_t *create_players_array();
