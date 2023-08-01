@@ -6,6 +6,7 @@
 
 #include "terminal.h"
 #include "errors.h"
+#include "utils.h"
 
 // ------------------------------------------ MACROS ------------------------------------------------- //
 
@@ -15,14 +16,14 @@
 
 // ---------------------------------------- GLOBAL VARS ---------------------------------------------- //
 
-static bool IS_TERMINAL_TURNED_ON = false;
-static bool IS_TERMINAL_ENABLED = false;
-static unsigned long curr_cursor = 0;
-static unsigned long curr_line_size = 0;
+static bool gl_is_terminal_enabled = false;
+static unsigned long gl_curr_file_cursor = 0;
+static unsigned long gl_curr_file_line_size = 0;
 
 // ---------------------------------------- STATIC FUNCS --------------------------------------------- //
 
 static char* get_last_line(int buffer_size);
+static int get_maximal_terminal_buffer_size();
 
 // ------------------------------------------ LIBRARY ------------------------------------------------ //
 
@@ -42,23 +43,63 @@ int enable_terminal()
     }
 
     fclose(file);
-    IS_TERMINAL_ENABLED = true;
+    gl_is_terminal_enabled = true;
     return 0;
 }
 
 int remove_terminal_data()
 {
     if (remove(TERMINAL_FILE) != 0) {
+        resolve_error(FAILURE_OF_REMOVING_FILE);
         return -1;
     }
 
-    IS_TERMINAL_TURNED_ON = false;
-    IS_TERMINAL_ENABLED = false;
+    gl_is_terminal_enabled = false;
+}
+
+static int parse_backspace(FILE *file)
+{
+    if (gl_curr_file_cursor > 0 && gl_curr_file_line_size > 0) {
+
+        if (fseek(file, -1, SEEK_END) != 0) {
+            resolve_error(GENERAL_IO_ERROR);
+            return -1;
+        }
+
+        if (ftruncate(fileno(file), ftell(file)) != 0) {
+            resolve_error(GENERAL_IO_ERROR);
+            return -1;
+        }
+
+        gl_curr_file_cursor--; gl_curr_file_line_size--;
+    }
+
+    return 0;
+}
+
+static int parse_newline(char **command)
+{
+    int buffer_size = get_maximal_terminal_buffer_size(); // changed from 100 to 102
+
+    char *line = get_last_line(buffer_size);
+
+    *command = malloc(strlen(line) + 1);
+    if (*command == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        free(line);
+        return -1;
+    }
+
+    strcpy(*command, line);
+
+    gl_curr_file_line_size = 0;
+    free(line);
+    return 0;
 }
 
 int process_command(char c, char **command)
 {
-    if (!IS_TERMINAL_TURNED_ON) {
+    if (!gl_is_terminal_enabled) {
         resolve_error(INACTIVE_TERMINAL);
         return -1;
     }
@@ -69,26 +110,10 @@ int process_command(char c, char **command)
         return -1;
     }
 
-    if (c == BACKSPACE) {
-
-        if (curr_cursor > 0 && curr_line_size > 0) {
-
-            if (fseek(file, -1, SEEK_END) != 0) {
-                resolve_error(GENERAL_IO_ERROR);
-                fclose(file);
-                return -1;
-            }
-
-            if (ftruncate(fileno(file), ftell(file)) != 0) {
-                resolve_error(GENERAL_IO_ERROR);
-                fclose(file);
-                return -1;
-            }
-            curr_cursor--; curr_line_size--;
-        }
-
+    if (KEYBOARD_PRESSED(c, BACKSPACE)) {
+        int parse_backspace_return_code =  parse_backspace(file);
         fclose(file);
-        return 0;
+        return parse_backspace_return_code;
     }
 
     if (fputc(c, file) == EOF) {
@@ -97,40 +122,21 @@ int process_command(char c, char **command)
         return -1;
     }
 
-    curr_cursor++; curr_line_size++;
+    gl_curr_file_cursor++; gl_curr_file_line_size++;
 
-    if (c == NEWLINE) {
-        
-        int buffer_size = curr_line_size;
-        if (buffer_size > 100) {
-            buffer_size = 100;
-        }
-
-        char *line = get_last_line(buffer_size);
-
-        *command = malloc(strlen(line) + 1);
-        if (*command == NULL) {
-            resolve_error(MEM_ALOC_FAILURE);
-            free(line);
-            fclose(file);
-            return -1;
-        }
-
-        strcpy(*command, line);
-
-        curr_line_size = 0;
-        free(line);
+    if (KEYBOARD_PRESSED(c, NEWLINE)) {
+        int parse_newline_return_code = parse_newline(command);
+        fclose(file);
+        return parse_newline_return_code;
     }
 
     fclose(file);
     return 0;
 }
 
-int render_terminal(px_t line_width, bool unkown_command, const char *volunatary_mess, int mess_length)
+int render_terminal(px_t line_width, bool special_regime, const char *volunatary_mess, int mess_length)
 {
-    if (IS_TERMINAL_ENABLED) {
-
-        IS_TERMINAL_TURNED_ON = true;
+    if (gl_is_terminal_enabled) {
 
         FILE* file = fopen(TERMINAL_FILE, "rb");
         if (file == NULL) {
@@ -138,19 +144,15 @@ int render_terminal(px_t line_width, bool unkown_command, const char *volunatary
             return -1;
         }
 
-        int buffer_size = curr_line_size;
-        if (buffer_size > 102) {
-            buffer_size = 102;
-        }
-
+        int buffer_size = get_maximal_terminal_buffer_size();
         char *line = get_last_line(buffer_size);
 
         put_horizontal_line(line_width - 1, '=');
         write_text("|| > ");
 
-        if (unkown_command) {
+        if (special_regime) {
             if (volunatary_mess == NULL) {
-                printf("\033[3m\033[93mUnknown command.\033[0m");
+                printf("\033[3m\033[93mUnknown command.\033[0m"); // default message
                 put_text("||", 90, RIGHT);
             } else {
                 write_text(volunatary_mess);
@@ -173,6 +175,16 @@ int render_terminal(px_t line_width, bool unkown_command, const char *volunatary
     }
 }
 
+static int get_maximal_terminal_buffer_size()
+{
+    int buffer_size = gl_curr_file_line_size;
+    if (buffer_size > 102) {
+        buffer_size = 102;
+    }
+
+    return buffer_size;
+}
+
 static char* get_last_line(int buffer_size)
 {
     char *line = calloc(buffer_size + 1, sizeof(char));
@@ -188,7 +200,7 @@ static char* get_last_line(int buffer_size)
         return NULL;
     }
 
-    if (fseek(file, curr_cursor - curr_line_size, SEEK_SET) != 0) {
+    if (fseek(file, gl_curr_file_cursor - gl_curr_file_line_size, SEEK_SET) != 0) {
         resolve_error(GENERAL_IO_ERROR);
         free(line);
         fclose(file);
