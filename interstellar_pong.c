@@ -4,8 +4,33 @@
 
 // --------------------------------------------------------------------------------------------- //
 
+#define KEYBOARD_PRESSED(user_keyboard, target_keyboard) (user_keyboard == target_keyboard)
+
+// --------------------------------------------------------------------------------------------- //
+
 static rectangle_t *find_object(game_t *game, const char *name);
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
+static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
+static void move_ball(rectangle_t *ball);
+static bool detect_collision(ID_t collision_ID, rectangle_t *object);
+static void handleBallAndPaddleCollision(rectangle_t *ball, rectangle_t *paddle);
+static bool checkBallBoundaryCollision(rectangle_t *ball, px_t width);
+static void handleBallAndMeteorCollision(rectangle_t *meteor, px_t width, px_t height);
+
+static ID_t get_ID(rectangle_t *object);
+static void set_x_speed(rectangle_t *object, int speed);
+static void set_y_speed(rectangle_t *object, int speed);
+static int get_x_speed(rectangle_t *object);
+static int get_y_speed(rectangle_t *object);
+static int get_x_position(rectangle_t *object);
+static void set_x_position(rectangle_t *object, px_t position);
+static int get_y_position(rectangle_t *object);
+static void set_y_position(rectangle_t *object, px_t position);
+static int get_side_length_1(rectangle_t *object);
+static int get_side_length_2(rectangle_t *object);
+static colour_t get_colour(rectangle_t *object);
+static void set_colour(rectangle_t *object, colour_t colour);
+static char *get_name(rectangle_t *object);
 
 // --------------------------------------------------------------------------------------------- //
 
@@ -53,7 +78,8 @@ scene_t *init_scene(game_t *game)
 
     if (!create_rectangle_and_add_it_to_scene(scene, 37, 8, 1, 1, 2, 1, WHITE, "ball") ||
         !create_rectangle_and_add_it_to_scene(scene, game->width - 5, 5, 1, 5, 0, 0, GREEN, "player") ||
-        !create_rectangle_and_add_it_to_scene(scene, 15, 13, 2, 2, 0, 0, DARK_GRAY, "meteor") ||
+        !create_rectangle_and_add_it_to_scene(scene, 15, 13, 2, 2, 0, 0, DARK_GRAY, "meteor_1") ||
+        !create_rectangle_and_add_it_to_scene(scene, 50, 5, 1, 2, 0, 0, DARK_GRAY, "meteor_2") ||
         !create_rectangle_and_add_it_to_scene(scene, 5, 5, 1, 5, 0, 0, RED, "enemy")) {
         return NULL;
     }
@@ -64,97 +90,134 @@ scene_t *init_scene(game_t *game)
 
 void handle_event(game_t *game, char c)
 {
-    if (c == 'w' || c == 'W') {
-        if ((int)find_object(game, "player")->position_y - 2 < 0) {
-            find_object(game, "player")->position_y = 0;
-        } else {
-            find_object(game, "player")->position_y -= 2;
+    if (KEYBOARD_PRESSED(c, 'w') || KEYBOARD_PRESSED(c, 'W')) {
+
+        set_y_position(find_object(game, "player"), get_y_position(find_object(game, "player")) - 2);
+        if (get_y_position(find_object(game, "player")) - 2 < 0) {
+            set_y_position(find_object(game, "player"), 0);
         }
 
-    } else if (c == 's' || c == 'S') {
-        find_object(game, "player")->position_y += 2;
-        if (find_object(game, "player")->position_y > game->height - find_object(game, "player")->side_length_2) {
-            find_object(game, "player")->position_y = game->height - find_object(game, "player")->side_length_2;
+    } else if (KEYBOARD_PRESSED(c, 's') || KEYBOARD_PRESSED(c, 'S')) {
+
+        set_y_position(find_object(game, "player"), get_y_position(find_object(game, "player")) + 2);
+        if (get_y_position(find_object(game, "player")) > game->height - get_side_length_2(find_object(game, "player"))) {
+            set_y_position(find_object(game, "player"), game->height - get_side_length_2(find_object(game, "player")));
         }
 
-    } else if (c == 'q' || c == 'Q') {
+    } else if (KEYBOARD_PRESSED(c, 'q') || KEYBOARD_PRESSED(c, 'Q')) {
         end_game(game);
     }
 }
 
-scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
+static void move_ball(rectangle_t *ball)
 {
-    // move ball
-    find_object(game, "ball")->position_x += find_object(game, "ball")->x_speed;
-    find_object(game, "ball")->position_y += find_object(game, "ball")->y_speed;
+    ball->position_x += ball->x_speed;
+    ball->position_y += ball->y_speed;
+}
 
-    // ball bounce off walls
-    if(find_object(game, "ball")->position_x >= game->width - 2 || find_object(game, "ball")->position_x <= 0) {
-        find_object(game, "ball")->x_speed *= -1;
+static void bounce_ball(rectangle_t *ball, px_t width, px_t height)
+{
+    if(ball->position_x >= width - 2 || ball->position_x <= 0) {
+        set_x_speed(ball, get_x_speed(ball) * (-1));
     }
-    if (find_object(game, "ball")->position_y >= game->height - find_object(game, "ball")->side_length_2 || find_object(game, "ball")->position_y <= 0) {
-        find_object(game, "ball")->y_speed *= -1; 
-    }        
+    if (ball->position_y >= height - ball->side_length_2 || ball->position_y <= 0) {
+        set_y_speed(ball, get_y_speed(ball) * (-1));
+    }     
+}
 
-    // move enemy paddle
-    int ball_center = find_object(game, "ball")->position_y + (find_object(game, "ball")->side_length_2 / 2);
-    int paddle_center = find_object(game, "enemy")->position_y + (find_object(game, "enemy")->side_length_2 / 2);
+static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height)
+{
+    int ball_center = get_y_position(ball) + (get_side_length_2(ball) / 2);
+    int paddle_center = get_y_position(enemy) + (get_side_length_2(enemy) / 2);
 
     if (ball_center < paddle_center) {
-        find_object(game, "enemy")->position_y -= 2;
+        set_y_position(enemy, get_y_position(enemy) - 2);
     } else if (ball_center > paddle_center) {
-        find_object(game, "enemy")->position_y += 2;
+        set_y_position(enemy, get_y_position(enemy) + 2);
     }
 
-    find_object(game, "enemy")->position_y += rand() % 3;
+    set_y_position(enemy, get_y_position(enemy) + rand() % 3);
 
-    if (find_object(game, "enemy")->position_y < 0) {
-        find_object(game, "enemy")->position_y = 0;
-    } else if (find_object(game, "enemy")->position_y + find_object(game, "enemy")->side_length_2 > game->height) {
-        find_object(game, "enemy")->position_y = game->height - find_object(game, "enemy")->side_length_2;
+    if (get_y_position(enemy) < 0) {
+        set_y_position(enemy, 0);
+    } else if (get_y_position(enemy) + get_side_length_2(enemy) > height) {
+        set_y_position(enemy, height - get_side_length_2(enemy));
     }
+}
+
+static bool detect_collision(ID_t collision_ID, rectangle_t *object)
+{
+    return collision_ID == get_ID(object);
+}
+
+static void handleBallAndPaddleCollision(rectangle_t *ball, rectangle_t *paddle)
+{
+    int paddle_center = paddle->position_y + (paddle->side_length_2 / 2);
+    int ball_center = ball->position_y + (ball->side_length_2 / 2);
+    int vertical_distance = ball_center - paddle_center;
+
+    if (ball->y_speed == 0) {
+        ball->y_speed = 1;
+    }
+    if (vertical_distance > 0) {
+        ball->y_speed = abs(ball->y_speed);
+    } else if (vertical_distance < 0) {
+        ball->y_speed = -1 * abs(ball->y_speed);
+    } else {
+        ball->y_speed = 0 + (rand() % 1) * (((rand() % 2) == 0) ? 1 : -1);
+    }
+
+    ball->x_speed = -1 * ball->x_speed;
+}
+
+static bool checkBallBoundaryCollision(rectangle_t *ball, px_t width)
+{
+    if (get_x_position(ball) <= 2) {
+        return false;
+    } else if (get_x_position(ball) + get_side_length_1(ball) >= width) {
+        return false;
+    }
+
+    return true;
+}
+
+static void handleBallAndMeteorCollision(rectangle_t *meteor, px_t width, px_t height)
+{
+    set_colour(meteor, DARK_GRAY);
+    set_x_position(meteor, (rand() % (width - 10)) + 5);
+    set_y_position(meteor, (rand() % (height - 10)) + 5);
+}
+
+scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
+{
+    move_ball(find_object(game, "ball"));
+    bounce_ball(find_object(game, "ball"), game->width, game->height);
+    simulate_enemy_paddle_movement(find_object(game, "enemy"), find_object(game, "ball"), game->height);
 
     // put objects pixel in pixel buffer
-    compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"), RECTANGLE);
-    compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor"), RECTANGLE);
-    compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"), RECTANGLE);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"), RECTANGLE);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_1"), RECTANGLE);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_2"), RECTANGLE);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"), RECTANGLE);
 
-    // collision detection
+    // collision detection and handling
     ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"), RECTANGLE);
-
-    if (collision_ID == find_object(game, "player")->ID || collision_ID == find_object(game, "enemy")->ID) {
-
-        int paddle_center = find_object(game, "player")->position_y + (find_object(game, "player")->side_length_2 / 2);
-        int ball_center = find_object(game, "ball")->position_y + (find_object(game, "ball")->side_length_2 / 2);
-        int vertical_distance = ball_center - paddle_center;
-
-        if (find_object(game, "ball")->y_speed == 0) {
-            find_object(game, "ball")->y_speed = 1;
-        }
-        if (vertical_distance > 0) {
-            find_object(game, "ball")->y_speed = abs(find_object(game, "ball")->y_speed);
-        } else if (vertical_distance < 0) {
-            find_object(game, "ball")->y_speed = -1 * abs(find_object(game, "ball")->y_speed);
-        } else {
-            find_object(game, "ball")->y_speed = 0 + rand() % 1;
-        }
-
-        find_object(game, "ball")->x_speed = -find_object(game, "ball")->x_speed;
+    if (detect_collision(collision_ID, find_object(game, "player"))) {
+        handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "player"));
+    }
+    if (detect_collision(collision_ID, find_object(game, "enemy"))) {
+        handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "enemy"));
+    }
+    if (detect_collision(collision_ID, find_object(game, "meteor_1"))) {
+        handleBallAndMeteorCollision(find_object(game, "meteor_1"), game->width, game->height);
+    }
+    if (detect_collision(collision_ID, find_object(game, "meteor_2"))) {
+        handleBallAndMeteorCollision(find_object(game, "meteor_2"), game->width, game->height);
     }
 
-    // ball gets out of bounds
-    if (find_object(game, "ball")->position_x <= 2) {
+    // check ball and bouderies
+    if (!checkBallBoundaryCollision(find_object(game, "ball"), game->width)) {
         end_game(game);
-    } else if (find_object(game, "ball")->position_x + find_object(game, "ball")->side_length_1 >= game->width) {
-        end_game(game);
-    }
-
-    // meteor collision
-    if (collision_ID == find_object(game, "meteor")->ID) {
-        find_object(game, "meteor")->colour = BLACK;
-        find_object(game, "meteor")->position_x = (rand() % (game->width - 10)) + 5;
-        find_object(game, "meteor")->position_y = (rand() % (game->height + 10)) + 5;
-        find_object(game, "meteor")->colour = DARK_GRAY;
     }
 
     return game->scene;
@@ -204,4 +267,82 @@ static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x
     }
 
     return true;
+}
+
+// ------------------------------------------- GETTERS & SETTERS ------------------------------- //
+
+static ID_t get_ID(rectangle_t *object)
+{
+    return object->ID;
+}
+
+static void set_x_speed(rectangle_t *object, int speed)
+{
+    object->x_speed = speed;
+}
+
+static int get_x_speed(rectangle_t *object)
+{
+    return object->x_speed;
+}
+
+static void set_y_speed(rectangle_t *object, int speed)
+{
+    object->y_speed = speed;
+}
+
+static int get_y_speed(rectangle_t *object)
+{
+    return object->y_speed;
+}
+
+static int get_x_position(rectangle_t *object)
+{
+    return object->position_x;
+}
+
+static void set_x_position(rectangle_t *object, px_t position)
+{
+    object->position_x = position;
+}
+
+static int get_y_position(rectangle_t *object)
+{
+    return object->position_y;
+}
+
+static void set_y_position(rectangle_t *object, px_t position)
+{
+    object->position_y = position;
+}
+
+static int get_side_length_1(rectangle_t *object)
+{
+    return object->side_length_1;
+}
+
+static int get_side_length_2(rectangle_t *object)
+{
+    return object->side_length_2;
+}
+
+static colour_t get_colour(rectangle_t *object)
+{
+    return object->colour;
+}
+
+static void set_colour(rectangle_t *object, colour_t colour)
+{
+    object->colour = colour;
+}
+
+static char *get_name(rectangle_t *object)
+{
+    char *name = malloc(strlen(object->name) + 1);
+    if (name == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    strcpy(name, object->name);
 }

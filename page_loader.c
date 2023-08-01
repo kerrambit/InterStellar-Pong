@@ -28,7 +28,7 @@
  *        The value is being changed only in find_page() - when the user views the page while selecting a player,
  *        the player pages are loaded sequentially and the index of the currently viewed page must be saved.
  */
-int gl_curr_players_page_index = 0;
+//int gl_curr_players_page_index = 0;
 
 /**
  * @brief This global variable is read by find_page().
@@ -37,7 +37,7 @@ int gl_curr_players_page_index = 0;
  *        in the file (some may have been added). This means that the number in the variable will always be up to date,
  *        cases of changing the file externally are undefined behavior and thus not checked.
  */
-int gl_players_count = 0;
+//int gl_players_count = 0;
 
 /**
  * @brief This global variable is read/set/updated/freed by find_page(), check_name(), is_name_unique() and load_create_new_player_page().
@@ -45,7 +45,7 @@ int gl_players_count = 0;
  *        If it is ok, it does not mean it will be used and can possibly be freed when leaving the page or replacing it with another name.
  *        Ultimately it should be stored within the player structure and released.
  */
-char *gl_curr_player_name = NULL;
+//char *gl_curr_player_name = NULL;
 
 /**
  * @brief This global variable is read and set in find_page() and load_create_new_player_page().
@@ -54,33 +54,33 @@ char *gl_curr_player_name = NULL;
  *        is passed to the user through the terminal. And to let the function know that it only needs to show this message once,
  *        this flag is used. 
  */
-bool gl_curr_player_name_seen_flag = false;
+//bool gl_curr_player_name_seen_flag = false;
 
 /**
  * @brief This global variable is set in find_page() and freed in load_game().
  *        It is used to pass the player struct between pages.
  */
-player_t *gl_player_choosen_to_game = NULL;
+//player_t *gl_player_choosen_to_game = NULL;
 
 // ---------------------------------------- STATIC DECLARATIONS--------------------------------- //
 
-static page_return_code_t load_main_page(px_t height, px_t width, bool unkown_command);
-static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, bool unkown_command);
-static page_return_code_t load_choose_player_page(px_t height, px_t width, bool unkown_command);
-static page_return_code_t load_create_new_player_page(px_t height, px_t width, bool unkown_command);
-static page_return_code_t load_game(px_t height, px_t width);
-static page_return_code_t load_after_game_page(px_t height, px_t width, bool unkown_command);
+static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data);
 
 static page_return_code_t load_not_found_page(px_t height, px_t width);
 static page_return_code_t load_error_page(px_t height, px_t width);
-static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, bool unkown_command);
+static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data);
 
 static players_array_t *load_players(const char* file_path);
-static page_t choose_pregame_page(void);
+static page_t choose_pregame_page(page_loader_inner_data_t *data);
 static player_t *find_player(const char *name, const char *file_path);
-static bool is_name_unique(const char *name);
-static bool check_name(const char *name);
-static page_t handle_save_and_play(void);
+static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
+static bool check_name(const char *name, page_loader_inner_data_t *data);
+static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static int write_player_to_file(player_t *player, const char *file_path);
 
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
@@ -88,7 +88,7 @@ static void put_game_logo(px_t width, position_t position);
 
 // --------------------------------------------------------------------------------------------- //
 
-page_t find_page(page_t current_page, const char *command)
+page_t find_page(page_t current_page, const char *command, page_loader_inner_data_t *data)
 {
     switch (current_page)
     {
@@ -98,7 +98,7 @@ page_t find_page(page_t current_page, const char *command)
         } else if (COMMAND_EQ(command, "a", "A", "about", "ABOUT")) {
             return ABOUT_PAGE;
         } else if (COMMAND_EQ(command, "p", "P", "play", "PLAY")) {
-            return choose_pregame_page();
+            return choose_pregame_page(data);
         }
         return NO_PAGE;
     // ----------------------------------------------------------------------------------------- //
@@ -114,7 +114,7 @@ page_t find_page(page_t current_page, const char *command)
     // ----------------------------------------------------------------------------------------- //
     case AFTER_GAME_PAGE:
         if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
-            return choose_pregame_page();
+            return choose_pregame_page(data);
         } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
@@ -132,10 +132,10 @@ page_t find_page(page_t current_page, const char *command)
     // ----------------------------------------------------------------------------------------- //
     case CHOOSE_PLAYER_PAGE:
         if (COMMAND_EQ(command, "b", "B", "back", "BACK")) {
-            if (gl_curr_players_page_index == 0) {
+            if (data->curr_players_page_index == 0) {
                 return MAIN_PAGE;
             } else {
-                gl_curr_players_page_index--;
+                data->curr_players_page_index--;
                 return CHOOSE_PLAYER_PAGE;
             }
         } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
@@ -143,47 +143,47 @@ page_t find_page(page_t current_page, const char *command)
         } else if (COMMAND_EQ(command, "c", "C", "create player", "CREATE PLAYER")) {
             return CREATE_NEW_PLAYER_PAGE;
         } else if (COMMAND_EQ(command, "n", "N", "next", "NEXT")) {
-            if (gl_players_count - ((gl_curr_players_page_index + 1) * 3) > 0) {
-                gl_curr_players_page_index++;
+            if (data->players_count - ((data->curr_players_page_index + 1) * 3) > 0) {
+                data->curr_players_page_index++;
             }
             return CHOOSE_PLAYER_PAGE;
         } else {
-            if((gl_player_choosen_to_game = find_player(command, PLAYERS_DATA_PATH)) != NULL) {
+            if((data->player_choosen_to_game = find_player(command, PLAYERS_DATA_PATH)) != NULL) {
                 return GAME_PAGE;
             }
         }
         return NO_PAGE;
     // ----------------------------------------------------------------------------------------- //
     case CREATE_NEW_PLAYER_PAGE:
-        if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT") && gl_curr_player_name == NULL) {
+        if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT") && data->curr_player_name == NULL) {
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
-        } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT") && gl_curr_player_name != NULL) {
+        } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT") && data->curr_player_name != NULL) {
             return QUIT_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE;    
-        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK") && gl_curr_player_name == NULL) {
-            return choose_pregame_page();
-        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK") && gl_curr_player_name != NULL) {
+        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK") && data->curr_player_name == NULL) {
+            return choose_pregame_page(data);
+        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK") && data->curr_player_name != NULL) {
             return BACK_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE;
         } else if (COMMAND_EQ(command, "w", "W", "play without creating player", "PLAY WITHOUT CREATING PLAYER")) {
-            free(gl_curr_player_name); gl_curr_player_name = NULL; gl_player_choosen_to_game = NULL;
+            free(data->curr_player_name); data->curr_player_name = NULL; data->player_choosen_to_game = NULL;
             return GAME_PAGE;
         } else if (COMMAND_EQ(command, "s", "S", "save and play", "SAVE AND PLAY")) {
-            return handle_save_and_play();
+            return handle_save_and_play(data);
         } else {
-            gl_curr_player_name_seen_flag = false;
-            if(!check_name(command)) {
-                gl_curr_player_name = INVALID_NAME;
+            data->curr_player_name_seen_flag = false;
+            if(!check_name(command, data)) {
+                data->curr_player_name = INVALID_NAME;
                 return CREATE_NEW_PLAYER_PAGE;
             }
-            if (!is_name_unique(command)) {
-                gl_curr_player_name = NOT_UNIQUE_NAME;
+            if (!is_name_unique(command, data)) {
+                data->curr_player_name = NOT_UNIQUE_NAME;
             }
             return CREATE_NEW_PLAYER_PAGE;
         }
     // ----------------------------------------------------------------------------------------- //
     case BACK_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE:
         if (COMMAND_EQ(command, "y", "Y", "yes", "YES")) {
-            free(gl_curr_player_name); gl_curr_player_name = NULL;
-            if (gl_players_count == 0) {
+            free(data->curr_player_name); data->curr_player_name = NULL;
+            if (data->players_count == 0) {
                 return PRE_CREATE_NEW_PLAYER_PAGE;
             } else {
                 return CHOOSE_PLAYER_PAGE;
@@ -194,7 +194,7 @@ page_t find_page(page_t current_page, const char *command)
     // ----------------------------------------------------------------------------------------- //
     case QUIT_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE:
         if (COMMAND_EQ(command, "y", "Y", "yes", "YES")) {
-            free(gl_curr_player_name); gl_curr_player_name = NULL;
+            free(data->curr_player_name); data->curr_player_name = NULL;
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         } else if (COMMAND_EQ(command, "n", "N", "no", "NO")) {
             return CREATE_NEW_PLAYER_PAGE;
@@ -205,30 +205,30 @@ page_t find_page(page_t current_page, const char *command)
     }
 }
 
-page_return_code_t load_page(page_t page, px_t height, px_t width, bool terminal_signal_unkwnon_commands)
+page_return_code_t load_page(page_t page, px_t height, px_t width, page_loader_inner_data_t *data)
 {
     switch (page)
     {
     case MAIN_PAGE:
-        return load_main_page(height, width, terminal_signal_unkwnon_commands);
+        return load_main_page(height, width, data);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
         return ERROR;
     case GAME_PAGE:
-        return load_game(height, GAME_WIDTH);
+        return load_game(height, GAME_WIDTH, data);
     case AFTER_GAME_PAGE:
-        return load_after_game_page(height, width, terminal_signal_unkwnon_commands);
+        return load_after_game_page(height, width, data);
     case PRE_CREATE_NEW_PLAYER_PAGE:
-        return load_pre_create_new_player_page(height, width, terminal_signal_unkwnon_commands);
+        return load_pre_create_new_player_page(height, width, data);
     case CHOOSE_PLAYER_PAGE:
-        return load_choose_player_page(height, width, terminal_signal_unkwnon_commands);
+        return load_choose_player_page(height, width, data);
     case ERROR_PAGE:
         return load_error_page(height, width);
     case CREATE_NEW_PLAYER_PAGE:
-        return load_create_new_player_page(height, width, terminal_signal_unkwnon_commands);
+        return load_create_new_player_page(height, width, data);
     case BACK_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE:
-        return load_quit_or_back_with_confirmation(height, width, terminal_signal_unkwnon_commands);
+        return load_quit_or_back_with_confirmation(height, width, data);
     case QUIT_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE:
-        return load_quit_or_back_with_confirmation(height, width, terminal_signal_unkwnon_commands);
+        return load_quit_or_back_with_confirmation(height, width, data);
     default:
         return load_not_found_page(height, width);
     }
@@ -263,7 +263,7 @@ const char *convert_page_2_string(page_t page)
  * @note Minimal height of main page is 12 pixels.
  * @return int 
  */
-static page_return_code_t load_main_page(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -277,14 +277,14 @@ static page_return_code_t load_main_page(px_t height, px_t width, bool unkown_co
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(5);
 
-    if (render_terminal(width, unkown_command, NULL, 0) == -1) {
+    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
     }
 
     return SUCCES;
 }
 
-static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -298,7 +298,7 @@ static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t 
     put_text("NO [N]", width, CENTER);
     put_empty_row(5);
 
-    if (render_terminal(width, unkown_command, NULL, 0) == -1) {
+    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
     }
 
@@ -409,7 +409,7 @@ static int write_player_to_file(player_t *player, const char *file_path)
     return 0;
 }
 
-static page_t choose_pregame_page(void)
+static page_t choose_pregame_page(page_loader_inner_data_t *data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
     if (players == NULL) {
@@ -418,7 +418,7 @@ static page_t choose_pregame_page(void)
 
     int players_count = players->count;
     release_players_array(players);
-    gl_players_count = players_count;
+    data->players_count = players_count;
 
     if (players_count > 0) {
         return CHOOSE_PLAYER_PAGE;
@@ -486,7 +486,7 @@ static void put_player(px_t width, px_t button_width, px_t button_height, player
     put_button(width, button_width, button_height, result, CENTER, last, row_margin);
 }
 
-static page_return_code_t load_choose_player_page(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
     if (players == NULL) {
@@ -504,7 +504,7 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, bool 
     put_empty_row(1);
 
     int row_margin = 0;
-    int rest = players->count - (gl_curr_players_page_index * 3);
+    int rest = players->count - (data->curr_players_page_index * 3);
     if (rest > 3) {
         rest = 3;
     }
@@ -513,7 +513,7 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, bool 
         if (i > 0) {
             write_text(" ");
         }
-        put_player(width / rest, 30, 5, players->players[(gl_curr_players_page_index * 3) + i], (i == (rest - 1) ? false : true), row_margin);
+        put_player(width / rest, 30, 5, players->players[(data->curr_players_page_index * 3) + i], (i == (rest - 1) ? false : true), row_margin);
         row_margin += (width / rest);
     }
 
@@ -523,14 +523,14 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, bool 
 
     release_players_array(players);
 
-     if (render_terminal(width, unkown_command, NULL, 0) == -1) {
+     if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
     }
     
     return SUCCES;
 }
 
-static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -546,39 +546,39 @@ static page_return_code_t load_pre_create_new_player_page(px_t height, px_t widt
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(4);
     
-    if (render_terminal(width, unkown_command, NULL, 0) == -1) {
+    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
     }
     
     return SUCCES;
 }
 
-static page_t handle_save_and_play(void)
+static page_t handle_save_and_play(page_loader_inner_data_t *data)
 {
-    if (gl_curr_player_name == NULL) {
-        gl_curr_player_name = NO_NAME_ENTERED;
-        gl_curr_player_name_seen_flag = false;
+    if (data->curr_player_name == NULL) {
+        data->curr_player_name = NO_NAME_ENTERED;
+        data->curr_player_name_seen_flag = false;
         return CREATE_NEW_PLAYER_PAGE;
     }
 
-    gl_player_choosen_to_game = create_player(gl_curr_player_name, 0, 0, 0, 0);
+    data->player_choosen_to_game = create_player(data->curr_player_name, 0, 0, 0, 0);
 
-    free(gl_curr_player_name);
-    gl_curr_player_name = NULL;
+    free(data->curr_player_name);
+    data->curr_player_name = NULL;
 
-    if (gl_player_choosen_to_game == NULL) {
+    if (data->player_choosen_to_game == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
         return ERROR_PAGE;
     }
 
-    if (write_player_to_file(gl_player_choosen_to_game, PLAYERS_DATA_PATH) == -1) {
+    if (write_player_to_file(data->player_choosen_to_game, PLAYERS_DATA_PATH) == -1) {
         resolve_error(UNOPENABLE_FILE);
         return ERROR_PAGE;
     }
     return GAME_PAGE;
 }
 
-static bool check_name(const char *name)
+static bool check_name(const char *name, page_loader_inner_data_t *data)
 {
     if (name != NULL) {
         for (int i = 0; i < strlen(name); ++i) {
@@ -588,19 +588,20 @@ static bool check_name(const char *name)
         }
     }
 
-    free(gl_curr_player_name);
+    free(data->curr_player_name);
+    data->curr_player_name = NULL;
 
-    gl_curr_player_name = malloc(strlen(name) + 1);
-    if (gl_curr_player_name == NULL) {
+    data->curr_player_name = malloc(strlen(name) + 1);
+    if (data->curr_player_name == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
         return false;
     }
 
-    strcpy(gl_curr_player_name, name);
+    strcpy(data->curr_player_name, name);
     return true;
 }
 
-static bool is_name_unique(const char *name)
+static bool is_name_unique(const char *name, page_loader_inner_data_t *data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
     if (players == NULL) {
@@ -610,8 +611,8 @@ static bool is_name_unique(const char *name)
 
     for (int i = 0; i < players->count; ++i) {
         if (STR_EQ(name, players->players[i]->name)) {
-            free(gl_curr_player_name);
-            gl_curr_player_name = NULL;
+            free(data->curr_player_name);
+            data->curr_player_name = NULL;
             release_players_array(players);
             return false;
         }
@@ -621,7 +622,7 @@ static bool is_name_unique(const char *name)
     return true;
 }
 
-static page_return_code_t load_create_new_player_page(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -640,26 +641,26 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, b
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(2);
 
-    if (gl_curr_player_name != NULL && !gl_curr_player_name_seen_flag) {
-        if (STR_EQ(gl_curr_player_name, INVALID_NAME)) {
-            gl_curr_player_name = NULL;
+    if (data->curr_player_name != NULL && !data->curr_player_name_seen_flag) {
+        if (STR_EQ(data->curr_player_name, INVALID_NAME)) {
+            data->curr_player_name = NULL;
             if (render_terminal(width, true, "\033[31m\033[3mThis name is invalid.\033[0m", 21) == -1) {
                 return ERROR;
             }
-        } else if (STR_EQ(gl_curr_player_name, NOT_UNIQUE_NAME)) {
-            gl_curr_player_name = NULL;
+        } else if (STR_EQ(data->curr_player_name, NOT_UNIQUE_NAME)) {
+            data->curr_player_name = NULL;
             if (render_terminal(width, true, "\033[31m\033[3mThis name is not unique.\033[0m", 24) == -1) {
                 return ERROR;
             }
-        } else if (STR_EQ(gl_curr_player_name, NO_NAME_ENTERED)) {
-            gl_curr_player_name = NULL;
+        } else if (STR_EQ(data->curr_player_name, NO_NAME_ENTERED)) {
+            data->curr_player_name = NULL;
             if (render_terminal(width, true, "\033[31m\033[3mNo name was entered.\033[0m", 20) == -1) {
                 return ERROR;
             }
         } else if (render_terminal(width, true, "\033[32m\033[3mThis name is valid and unique.\033[0m", 30) == -1) {
             return ERROR;
         }
-        gl_curr_player_name_seen_flag = true;
+        data->curr_player_name_seen_flag = true;
         return SUCCES;
     }
 
@@ -670,7 +671,7 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, b
     return SUCCES;
 }
 
-static page_return_code_t load_after_game_page(px_t height, px_t width, bool unkown_command)
+static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -685,7 +686,7 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, bool unk
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(4);
 
-    if (render_terminal(width, unkown_command, NULL, 0) == -1) {
+    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
     }
     
@@ -707,15 +708,15 @@ static int init_file_descriptor_monitor()
     return select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
 }
 
-static page_return_code_t load_game(px_t height, px_t width)
+static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data)
 {
-    game_t *game = init_game(gl_player_choosen_to_game, height, width);
+    game_t *game = init_game(data->player_choosen_to_game, height, width);
     if (game == NULL) {
-        release_player(gl_player_choosen_to_game);
+        release_player(data->player_choosen_to_game);
         return ERROR;
     }
 
-    release_player(gl_player_choosen_to_game);
+    release_player(data->player_choosen_to_game);
 
     scene_t *scene = init_scene(game);
     if (scene == NULL) {
@@ -777,4 +778,25 @@ static void put_game_logo(px_t width, position_t position)
     put_text("|   |   |  \\  | \\  ___/|  | \\/        \\|  | \\  ___/|  |_|  |__/ __ \\|  | \\/  |    |  (  <_> )   |  \\/ /_/  >", width, position);
     put_text("|___|___|  /__|  \\___  >__| /_______  /|__|  \\___  >____/____(____  /__|     |____|   \\____/|___|  /\\___  / ", width, position);
     put_text("         \\/          \\/             \\/           \\/               \\/                             \\//_____/  ", width, position);
+}
+
+page_loader_inner_data_t *create_page_loader_inner_data()
+{
+    page_loader_inner_data_t *data = malloc(sizeof(page_loader_inner_data_t));
+    if (data == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    data->curr_player_name_seen_flag = false; data->curr_players_page_index = 0; data->players_count = 0;
+    data->terminal_signal = false; data->curr_player_name = NULL; data->player_choosen_to_game = NULL;
+
+    return data;
+}
+
+void release_plage_loader_inner_data(page_loader_inner_data_t *data)
+{
+    if (data != NULL) {
+        free(data);
+    }
 }

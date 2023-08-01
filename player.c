@@ -96,7 +96,9 @@ player_t *create_player_from_string(char* string)
 void release_player(player_t *player)
 {
     if (player != NULL) {
-        free(player->name);
+        if (player->name != NULL) {
+            free(player->name);
+        }
         free(player);
     }
 }

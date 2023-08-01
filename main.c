@@ -44,12 +44,21 @@ int main()
 
     struct termios old_term = init_termios();
 
+    // set up data storage for page_loader functions
+    page_loader_inner_data_t *data = create_page_loader_inner_data();
+    if (data == NULL) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+        show_cursor();
+        return EXIT_FAILURE;
+    }
+
     // try to load and render main page
-    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, false) == ERROR) {
+    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, data) == ERROR) {
         if (remove_terminal_data() == -1) {
             resolve_error(FAILURE_OF_REMOVING_FILE);
         }
         tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+        release_plage_loader_inner_data(data);
         show_cursor();
         return EXIT_FAILURE;
     }
@@ -67,30 +76,31 @@ int main()
         }
 
         page_t new_page = NO_PAGE;
-        bool unknown_command = false;
+        data->terminal_signal = false;
         if (command != NULL) {
-            new_page = find_page(current_page, command);
+            new_page = find_page(current_page, command, data);
             if (new_page != NO_PAGE) {
                 current_page = new_page;
             } else {
-                unknown_command = true;
+                data->terminal_signal = true;
             }
         }
 
         free(command);
-        page_return_code_t load_page_return_code = load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH, unknown_command);
+        page_return_code_t load_page_return_code = load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH, data);
 
         if (load_page_return_code == ERROR) {
             break;
         } else if (load_page_return_code == SUCCESS_GAME) {
             current_page = AFTER_GAME_PAGE;
-            if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, unknown_command) == ERROR) {
+            if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, data) == ERROR) {
                 break;
             } 
         }
     }
 
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+    release_plage_loader_inner_data(data);
 
     if (remove_terminal_data() == -1) {
         resolve_error(FAILURE_OF_REMOVING_FILE);
