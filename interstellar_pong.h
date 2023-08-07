@@ -39,6 +39,8 @@ typedef struct game_t {
     px_t width;              /** Width of the game screen. */
     px_t height;             /** Height of the game screen. */
     game_state_t game_state; /** Current state of the game. */
+    int game_ticks;          /** Represents the number of ball bounces between players. */
+    int enemy_hearts;        /** Represents all lifes of the enemy */
 } game_t;
 
 game_t *init_game(player_t *player, px_t height, px_t width);

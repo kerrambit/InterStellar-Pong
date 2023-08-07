@@ -31,7 +31,7 @@ player_t *create_player(char* name, int level, int stone, int copper, int iron, 
 
     strcpy(player->name, name);
 
-    player->level = level; player->stone = stone; player->copper = copper; player->iron = iron; player->gold = gold;
+    player->level = level; player->stone = stone; player->copper = copper; player->iron = iron; player->gold = gold; player->hearts = 3;
     return player;
 }
 

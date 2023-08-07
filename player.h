@@ -23,6 +23,7 @@ typedef struct player_t {
     int copper;
     int iron;
     int gold;
+    int hearts;
 } player_t;
 
 typedef struct players_array_t {

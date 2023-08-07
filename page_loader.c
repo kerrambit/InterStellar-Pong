@@ -82,6 +82,7 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
 static bool check_name(const char *name, page_loader_inner_data_t *data);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static int write_player_to_file(player_t *player, const char *file_path);
+static int update_players_stats(player_t *player, const char *file_path);
 
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
 static void put_game_logo(px_t width, position_t position);
@@ -708,6 +709,11 @@ static int init_file_descriptor_monitor()
     return select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
 }
 
+static int update_players_stats(player_t *player, const char *file_path)
+{
+    return 0;
+}
+
 static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     game_t *game = init_game(data->player_choosen_to_game, height, width);
@@ -715,8 +721,6 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         release_player(data->player_choosen_to_game);
         return ERROR;
     }
-
-    release_player(data->player_choosen_to_game);
 
     scene_t *scene = init_scene(game);
     if (scene == NULL) {
@@ -728,6 +732,7 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
     if (pixel_buffer1 == NULL) {
         release_game(game);
         release_scene(scene);
+        release_player(data->player_choosen_to_game);
         return ERROR;
     }
 
@@ -736,6 +741,7 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         release_game(game);
         release_scene(scene);
         release_pixel_buffer(pixel_buffer1);
+        release_player(data->player_choosen_to_game);
         return ERROR;
     }
 
@@ -760,11 +766,24 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         pixel_buffer2 = tmp_buffer;
         render_graphics(pixel_buffer1, scene);
 
-        write_text("\n\n");
-        put_text("[TODO] Live game stats...", width, CENTER);
+        //write_text("\n");
+        printf("Game ticks: %d\n", game->game_ticks);
+        printf("Enemy hearts (%d/3): \033[0;31m", game->enemy_hearts);
+        for (int i = 0; i < game->enemy_hearts; ++i) {
+            printf("♥");
+        }
+        printf("\033[0m\t\t\t\t\t  Your hearts (%d/3): \033[0;31m", game->player->hearts);
+        for (int i = 0; i < game->player->hearts; ++i) {
+            printf("♥");
+        }
+        printf("\n\033[0m\t\t\t     Your resources: STONE (%d)\n", game->player->stone);
+        clear_canvas();
 
         usleep(70000);
     }
+
+    update_players_stats(game->player, PLAYERS_DATA_PATH);
+    release_player(data->player_choosen_to_game); // TODO: this will be released in after_game_page
 
     release_game(game);
     release_pixel_buffer(pixel_buffer1);

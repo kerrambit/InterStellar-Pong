@@ -10,8 +10,8 @@ static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball
 static void move_ball(rectangle_t *ball);
 static bool detect_collision(ID_t collision_ID, rectangle_t *object);
 static void handleBallAndPaddleCollision(rectangle_t *ball, rectangle_t *paddle);
-static bool checkBallBoundaryCollision(rectangle_t *ball, px_t width);
-static void handleBallAndMeteorCollision(rectangle_t *meteor, px_t width, px_t height);
+static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game);
+static void handleBallAndMeteorCollision(rectangle_t *meteor, game_t *game);
 
 static ID_t get_ID(rectangle_t *object);
 static void set_x_speed(rectangle_t *object, int speed);
@@ -24,6 +24,8 @@ static int get_y_position(rectangle_t *object);
 static void set_y_position(rectangle_t *object, px_t position);
 static int get_side_length_1(rectangle_t *object);
 static int get_side_length_2(rectangle_t *object);
+static int get_game_ticks(game_t *game);
+static void increment_game_ticks(game_t *game);
 static colour_t get_colour(rectangle_t *object);
 static void set_colour(rectangle_t *object, colour_t colour);
 static char *get_name(rectangle_t *object);
@@ -42,6 +44,8 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     game->height = height;
     game->width = width;
     game->scene = NULL;
+    game->game_ticks = 0;
+    game->enemy_hearts = 3;
 
     if (player == NULL) {
         game->player = create_player("-", 0, 0, 0, 0, 0);
@@ -166,22 +170,35 @@ static void handleBallAndPaddleCollision(rectangle_t *ball, rectangle_t *paddle)
     ball->x_speed = -1 * ball->x_speed;
 }
 
-static bool checkBallBoundaryCollision(rectangle_t *ball, px_t width)
+static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game)
 {
+    bool is_in_bound = true;
     if (get_x_position(ball) <= 2) {
-        return false;
-    } else if (get_x_position(ball) + get_side_length_1(ball) >= width) {
-        return false;
+        is_in_bound = false;
+    } else if (get_x_position(ball) + get_side_length_1(ball) >= game->width) {
+        is_in_bound = false;
     }
 
-    return true;
+    if (!is_in_bound) {
+        if (game->game_ticks % 2 == 0) {
+            game->player->hearts--;
+        } else {
+            game->enemy_hearts--;
+        }
+    }
+
+    return is_in_bound;
 }
 
-static void handleBallAndMeteorCollision(rectangle_t *meteor, px_t width, px_t height)
+static void handleBallAndMeteorCollision(rectangle_t *meteor, game_t *game)
 {
+    if (game->game_ticks % 2 != 0) {
+        game->player->stone++;
+    }
+
     set_colour(meteor, DARK_GRAY);
-    set_x_position(meteor, (rand() % (width - 10)) + 5);
-    set_y_position(meteor, (rand() % (height - 10)) + 5);
+    set_x_position(meteor, (rand() % (game->width - 10)) + 5);
+    set_y_position(meteor, (rand() % (game->height - 10)) + 5);
 }
 
 scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
@@ -199,20 +216,27 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
     // collision detection and handling
     ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"), RECTANGLE);
     if (detect_collision(collision_ID, find_object(game, "player"))) {
+        increment_game_ticks(game);
         handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "player"));
     }
     if (detect_collision(collision_ID, find_object(game, "enemy"))) {
+        increment_game_ticks(game);
         handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "enemy"));
     }
     if (detect_collision(collision_ID, find_object(game, "meteor_1"))) {
-        handleBallAndMeteorCollision(find_object(game, "meteor_1"), game->width, game->height);
+        handleBallAndMeteorCollision(find_object(game, "meteor_1"), game);
     }
     if (detect_collision(collision_ID, find_object(game, "meteor_2"))) {
-        handleBallAndMeteorCollision(find_object(game, "meteor_2"), game->width, game->height);
+        handleBallAndMeteorCollision(find_object(game, "meteor_2"), game);
     }
 
     // check ball and bouderies
-    if (!checkBallBoundaryCollision(find_object(game, "ball"), game->width)) {
+    if (!checkBallBoundaryCollision(find_object(game, "ball"), game)) {
+        increment_game_ticks(game);
+    }
+
+    // end game
+    if (game->enemy_hearts <= 0 || game->player->hearts <= 0) {
         end_game(game);
     }
 
@@ -320,6 +344,16 @@ static int get_side_length_1(rectangle_t *object)
 static int get_side_length_2(rectangle_t *object)
 {
     return object->side_length_2;
+}
+
+static int get_game_ticks(game_t *game)
+{
+    return game->game_ticks;
+}
+
+static void increment_game_ticks(game_t *game)
+{
+    game->game_ticks++;
 }
 
 static colour_t get_colour(rectangle_t *object)
