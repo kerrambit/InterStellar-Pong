@@ -45,7 +45,12 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     game->width = width;
     game->scene = NULL;
     game->game_ticks = 0;
-    game->enemy_hearts = 3;
+    game->enemy = create_player("enemy", 0, 0, 0, 0, 0);
+    if (game->enemy == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        free(game);
+        return NULL;
+    } 
 
     if (player == NULL) {
         game->player = create_player("-", 0, 0, 0, 0, 0);
@@ -55,6 +60,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
 
     if (game->player == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
+        free(game->enemy);
         free(game);
         return NULL;
     }
@@ -183,7 +189,7 @@ static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game)
         if (game->game_ticks % 2 == 0) {
             game->player->hearts--;
         } else {
-            game->enemy_hearts--;
+            game->enemy->hearts--;
         }
     }
 
@@ -236,7 +242,7 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
     }
 
     // end game
-    if (game->enemy_hearts <= 0 || game->player->hearts <= 0) {
+    if (game->enemy->hearts <= 0 || game->player->hearts <= 0) {
         end_game(game);
     }
 
@@ -257,6 +263,7 @@ void release_game(game_t *game)
 {
     if (game != NULL) {
         release_player(game->player);
+        release_player(game->enemy);
         release_scene(game->scene);
         free(game);
     }

@@ -767,9 +767,9 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         render_graphics(pixel_buffer1, scene);
 
         //write_text("\n");
-        printf("Game ticks: %d\n", game->game_ticks);
-        printf("Enemy hearts (%d/3): \033[0;31m", game->enemy_hearts);
-        for (int i = 0; i < game->enemy_hearts; ++i) {
+        printf("\nGame ticks: %d\n", game->game_ticks);
+        printf("Enemy hearts (%d/3): \033[0;31m", game->enemy->hearts);
+        for (int i = 0; i < game->enemy->hearts; ++i) {
             printf("♥");
         }
         printf("\033[0m\t\t\t\t\t  Your hearts (%d/3): \033[0;31m", game->player->hearts);
