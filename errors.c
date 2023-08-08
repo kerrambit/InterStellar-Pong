@@ -21,6 +21,8 @@ void resolve_error(errors_t error)
     case FAILURE_OF_REMOVING_FILE: PRINT_ERROR_MESS("[I/O Error]: removing of the file failed");
     case MEM_ALOC_FAILURE: PRINT_ERROR_MESS("[Memory error]: memory allocation failed");
     case INVALID_DATA_IN_FILE: PRINT_ERROR_MESS("[Data Error]: data in file was invalid or corrupted");
+    case MISSING_DATA_FILE: PRINT_ERROR_MESS("[Application Error]: file with data was not found");
+    case FAILURE_OF_RENAMING_FILE: PRINT_ERROR_MESS("[I/O Error]: renaming of the file failed");
     default:
         break;
     }

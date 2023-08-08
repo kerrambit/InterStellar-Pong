@@ -82,7 +82,8 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
 static bool check_name(const char *name, page_loader_inner_data_t *data);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static int write_player_to_file(player_t *player, const char *file_path);
-static int update_players_stats(player_t *player, const char *file_path);
+static char *create_player_string(player_t *player, bool end_with_newline);
+static int update_players_stats(player_t *target_player, const char *file_path);
 static void display_live_stats(game_t *game);
 static void display_resources(player_t *player, int width);
 static void display_hearts(const char *player_name, int number_of_hearts);
@@ -389,6 +390,31 @@ static players_array_t *load_players(const char* file_path)
     return players;
 }
 
+static char *create_player_string(player_t *player, bool end_with_newline)
+{
+    int size;
+    if (end_with_newline) {
+        size = snprintf(NULL, 0, "%s;%d;%d;%d;%d;%d\n", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
+    } else {
+        size = snprintf(NULL, 0, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
+    }
+    
+
+    char *string = malloc(size + 1);
+    if (string == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    if (end_with_newline) {
+        snprintf(string, size + 1, "%s;%d;%d;%d;%d;%d\n", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
+    } else {
+        snprintf(string, size + 1, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
+    }
+    
+    return string;
+}
+
 static int write_player_to_file(player_t *player, const char *file_path)
 {
     FILE* file = fopen(file_path, "a");
@@ -396,16 +422,12 @@ static int write_player_to_file(player_t *player, const char *file_path)
         return -1;
     }
 
-    int size = snprintf(NULL, 0, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
-
-    char *result = malloc(size + 1);
+    char *result = create_player_string(player, false);
     if (result == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
         fclose(file);
         return -1;
     }
 
-    snprintf(result, size + 1, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
     fputs(result, file);
 
     free(result);
@@ -712,8 +734,84 @@ static int init_file_descriptor_monitor()
     return select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
 }
 
-static int update_players_stats(player_t *player, const char *file_path)
+static int update_players_stats(player_t *target_player, const char *file_path)
 {
+    if (access(file_path, F_OK) != 0) {
+        resolve_error(MISSING_DATA_FILE);
+        return -1;
+    }
+
+    FILE* file = fopen(file_path, "r");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        return -1;
+    }
+
+    FILE* temp_file = fopen("_temp.data", "w");
+    if (temp_file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        fclose(file);
+        return -1;
+    }
+
+    char* line = NULL;
+    size_t line_length = 0;
+    ssize_t bytes_read;
+    bool target_found = false;
+
+    while ((bytes_read = getline(&line, &line_length, file)) != -1) {
+
+        if (STR_EQ(line, "\n")) {
+            continue;
+        }
+
+        player_t *player = create_player_from_string(line);
+        if (player == NULL) {
+            free(line);
+            fclose(file);
+            fclose(temp_file);
+            return -1;
+        }
+
+        if (STR_EQ(player->name, target_player->name)) {
+            target_found = true;
+            char *result = create_player_string(target_player, true);
+            if (result == NULL) {
+                free(line);
+                fclose(file);
+                fclose(temp_file);
+                return -1;
+            }
+            fputs(result, temp_file);
+            free(result);
+        } else {
+            fputs(line, temp_file);
+        }
+
+        release_player(player);
+    }
+
+    free(line);
+    fclose(file);
+    fclose(temp_file);
+
+    if (remove(file_path) != 0) {
+        resolve_error(FAILURE_OF_REMOVING_FILE);
+        return -1;
+    }
+
+    if (rename("_temp.data", file_path) != 0) {
+        resolve_error(FAILURE_OF_RENAMING_FILE);
+        return -1;
+    }
+
+    if (!target_found) {
+        if (write_player_to_file(target_player, "_temp.data") == -1) {
+            resolve_error(UNOPENABLE_FILE);
+            return -1;
+        }
+    }
+    
     return 0;
 }
 
@@ -799,12 +897,17 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         usleep(70000);
     }
 
-    update_players_stats(game->player, PLAYERS_DATA_PATH);
-    release_player(data->player_choosen_to_game); // TODO: this will be released in after_game_page
-
-    release_game(game);
     release_pixel_buffer(pixel_buffer1);
     release_pixel_buffer(pixel_buffer2);
+
+    if (update_players_stats(game->player, PLAYERS_DATA_PATH) == -1) {
+        release_game(game);
+        release_player(data->player_choosen_to_game);
+        return ERROR;
+    }
+
+    release_player(data->player_choosen_to_game); // TODO: this will be released in after_game_page
+    release_game(game);
 
     return SUCCESS_GAME;
 }
