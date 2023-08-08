@@ -766,17 +766,15 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         pixel_buffer2 = tmp_buffer;
         render_graphics(pixel_buffer1, scene);
 
-        //write_text("\n");
-        printf("\nGame ticks: %d\n", game->game_ticks);
-        printf("Enemy hearts (%d/3): \033[0;31m", game->enemy->hearts);
+        write_text("\nEnemy hearts (%d/3): \033[0;31m", game->enemy->hearts);
         for (int i = 0; i < game->enemy->hearts; ++i) {
-            printf("♥");
+            write_text("♥");
         }
-        printf("\033[0m\t\t\t\t\t  Your hearts (%d/3): \033[0;31m", game->player->hearts);
+        write_text("\033[0m\t\t\t\t\t  Your hearts (%d/3): \033[0;31m", game->player->hearts);
         for (int i = 0; i < game->player->hearts; ++i) {
-            printf("♥");
+            write_text("♥");
         }
-        printf("\n\033[0m\t\t\t     Your resources: STONE (%d)\n", game->player->stone);
+        write_text("\n\033[0m\t\t\t     Your resources: STONE (%d/?) IRON (%d/?)", game->player->stone, game->player->iron);
         clear_canvas();
 
         usleep(70000);

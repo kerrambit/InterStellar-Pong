@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -116,10 +117,15 @@ void put_text(const char* text, px_t line_width, position_t pos)
     ROW_DOWN();
 }
 
-void write_text(const char* text)
+void write_text(const char* format, ...)
 {
+    va_list args;
+    va_start(args, format);
+    
     CHAR_RIGHT();
-    printf("%s", text);
+    vprintf(format, args);
+    
+    va_end(args);
 }
 
 void put_button(px_t width, px_t button_width, px_t button_height, const char *text, position_t pos, bool row_mode, px_t row_margin)

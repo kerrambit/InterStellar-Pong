@@ -88,7 +88,7 @@ void hide_cursor(void);
 
 void draw_borders(px_t height, px_t width);
 void put_text(const char* text, px_t line_width, position_t pos);
-void write_text(const char* text);
+void write_text(const char* format, ...);
 void put_button(px_t width, px_t button_width, px_t button_height, const char *text, position_t pos, bool row_mode, px_t row_margin);
 void put_empty_row(unsigned int rows_count);
 void put_horizontal_line(px_t line_width, char symbol);
