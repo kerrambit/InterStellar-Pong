@@ -83,6 +83,9 @@ static bool check_name(const char *name, page_loader_inner_data_t *data);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static int write_player_to_file(player_t *player, const char *file_path);
 static int update_players_stats(player_t *player, const char *file_path);
+static void display_live_stats(game_t *game);
+static void display_resources(player_t *player, int width);
+static void display_hearts(const char *player_name, int number_of_hearts);
 
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
 static void put_game_logo(px_t width, position_t position);
@@ -714,6 +717,32 @@ static int update_players_stats(player_t *player, const char *file_path)
     return 0;
 }
 
+static void display_hearts(const char *player_name, int number_of_hearts)
+{
+    write_text("%s hearts (%d/3): ", player_name, number_of_hearts);
+    for (int i = 0; i < number_of_hearts; ++i) {
+        write_text("\033[0;31m♥\033[0m");
+    }
+    if (number_of_hearts < 3) {
+        write_text(" ");
+    }
+}
+
+static void display_resources(player_t *player, int width)
+{
+    put_text("Resources:", width, CENTER);
+    write_text("\t\t   STONE (%d/?) IRON(%d/?) COPPER(%d/?) GOLD(%d/?) ", player->stone, player->iron, player->copper, player->gold);
+}
+
+static void display_live_stats(game_t *game)
+{
+    write_text("\n");
+    display_hearts("Enemy", game->enemy->hearts);
+    display_hearts("\t\t\t      Your", game->player->hearts);
+    write_text("\n");
+    display_resources(game->player, game->width);
+}
+
 static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     game_t *game = init_game(data->player_choosen_to_game, height, width);
@@ -766,17 +795,7 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         pixel_buffer2 = tmp_buffer;
         render_graphics(pixel_buffer1, scene);
 
-        write_text("\nEnemy hearts (%d/3): \033[0;31m", game->enemy->hearts);
-        for (int i = 0; i < game->enemy->hearts; ++i) {
-            write_text("♥");
-        }
-        write_text("\033[0m\t\t\t\t\t  Your hearts (%d/3): \033[0;31m", game->player->hearts);
-        for (int i = 0; i < game->player->hearts; ++i) {
-            write_text("♥");
-        }
-        write_text("\n\033[0m\t\t\t     Your resources: STONE (%d/?) IRON (%d/?)", game->player->stone, game->player->iron);
-        clear_canvas();
-
+        display_live_stats(game);
         usleep(70000);
     }
 
