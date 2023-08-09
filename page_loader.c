@@ -76,6 +76,7 @@ static page_return_code_t load_not_found_page(px_t height, px_t width);
 static page_return_code_t load_error_page(px_t height, px_t width);
 static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data);
 
+static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data);
 static players_array_t *load_players(const char* file_path);
 static page_t choose_pregame_page(page_loader_inner_data_t *data);
 static player_t *find_player(const char *name, const char *file_path);
@@ -121,8 +122,12 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
     // ----------------------------------------------------------------------------------------- //
     case AFTER_GAME_PAGE:
         if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
+            release_player(data->player_choosen_to_game);
+            data->player_choosen_to_game = NULL;
             return choose_pregame_page(data);
         } else if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
+            release_player(data->player_choosen_to_game);
+            data->player_choosen_to_game = NULL;
             return QUIT_WITHOUT_CONFIRMATION_PAGE;
         }
         return NO_PAGE;
@@ -712,27 +717,33 @@ static char *create_string(const char *format, ...)
     return string;
 }
 
+static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data)
+{
+    put_empty_row(1);
+    put_text("No statistics available for the game without the player.", width, CENTER);
+    put_empty_row(3);
+    put_text("NEW GAME [N]", width, CENTER);
+    put_text("QUIT [Q]", width, CENTER);
+    put_empty_row(3);
+
+    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+        return ERROR;
+    }
+    
+    return SUCCES;
+}
+
 static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
     draw_borders(height, width);
     set_cursor_at_beginning_of_canvas();
+    put_empty_row(1);
+    put_game_logo(width, CENTER);
+    put_empty_row(1);
 
     if (data->player_choosen_to_game == NULL) {
-        put_empty_row(1);
-        put_game_logo(width, CENTER);
-        put_empty_row(2);
-        put_text("No statistics available for the game without the player.", width, CENTER);
-        put_empty_row(3);
-        put_text("NEW GAME [N]", width, CENTER);
-        put_text("QUIT [Q]", width, CENTER);
-        put_empty_row(3);
-
-        if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
-            return ERROR;
-        }
-        
-        return SUCCES;
+        return handle_stats_for_no_player(width, data);
     }
 
     player_t *updated_player = find_player(data->player_choosen_to_game->name, PLAYERS_DATA_PATH);
@@ -747,36 +758,32 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
 
-    put_empty_row(1);
-    put_game_logo(width, CENTER);
-    put_empty_row(1);
-    put_text(intro, width, CENTER);
-    put_empty_row(1);
-
-    free(intro);
-
     char *game_collected = create_string("In the game you collected: %d STONE, %d IRON, %d COPPER and %d GOLD.", updated_player->stone - data->player_choosen_to_game->stone,
-                                                                                                           updated_player->iron - data->player_choosen_to_game->iron,
-                                                                                                           updated_player->copper - data->player_choosen_to_game->copper,
-                                                                                                           updated_player->gold - data->player_choosen_to_game->gold);
+                                                                                                                 updated_player->iron - data->player_choosen_to_game->iron,
+                                                                                                                 updated_player->copper - data->player_choosen_to_game->copper,
+                                                                                                                 updated_player->gold - data->player_choosen_to_game->gold);
     if (game_collected == NULL) {
         release_player(updated_player);
         release_player(data->player_choosen_to_game);
+        free(intro);
         return ERROR;
     }
 
-    char *level_info = create_string("For the level %d you need still: STONE (%d,?), IRON (%d,?), COPPER (%d,?) and GOLD (%d,?).", updated_player->level + 1,
-                                                                                                                           updated_player->stone,
-                                                                                                                           updated_player->iron,
-                                                                                                                           updated_player->copper,
-                                                                                                                           updated_player->gold);
+    char *level_info = create_string("For the level %d you need still: STONE (%d/?), IRON (%d/?), COPPER (%d/?) and GOLD (%d/?).", updated_player->level + 1,
+                                                                                                                                   updated_player->stone,
+                                                                                                                                   updated_player->iron,
+                                                                                                                                   updated_player->copper,
+                                                                                                                                   updated_player->gold);
     if (level_info == NULL) {
         free(game_collected);
+        free(intro);
         release_player(updated_player);
         release_player(data->player_choosen_to_game);
         return ERROR;
     }
     
+    put_text(intro, width, CENTER);
+    put_empty_row(1);
     put_text(game_collected, width, CENTER);
     put_text(level_info, width, CENTER);
     put_empty_row(2);
@@ -784,12 +791,10 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(2);
 
+    release_player(updated_player);
     free(game_collected);
     free(level_info);
-
-    release_player(data->player_choosen_to_game); // TODO: maybe release of this player should be moved further, for example before loading game_page
-    data->player_choosen_to_game = NULL;
-    release_player(updated_player);
+    free(intro);
 
     if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
