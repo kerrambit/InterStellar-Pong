@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <sys/select.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,6 +83,7 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
 static bool check_name(const char *name, page_loader_inner_data_t *data);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static int write_player_to_file(player_t *player, const char *file_path);
+static char *create_string(const char *format, ...);
 static char *create_player_string(player_t *player, bool end_with_newline);
 static int update_players_stats(player_t *target_player, const char *file_path);
 static void display_live_stats(game_t *game);
@@ -392,7 +394,7 @@ static players_array_t *load_players(const char* file_path)
 
 static char *create_player_string(player_t *player, bool end_with_newline)
 {
-    int size;
+    /**int size;
     if (end_with_newline) {
         size = snprintf(NULL, 0, "%s;%d;%d;%d;%d;%d\n", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
     } else {
@@ -412,6 +414,18 @@ static char *create_player_string(player_t *player, bool end_with_newline)
         snprintf(string, size + 1, "\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
     }
     
+    return string;*/
+    char *string;
+    if (end_with_newline) {
+        string = create_string("%s;%d;%d;%d;%d;%d\n", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
+    } else {
+        string = create_string("\n%s;%d;%d;%d;%d;%d", player->name, player->level, player->stone, player->copper, player->iron, player->gold);
+    }
+
+    if (string == NULL) {
+        return NULL;
+    }
+
     return string;
 }
 
@@ -697,6 +711,28 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
     return SUCCES;
 }
 
+static char *create_string(const char *format, ...)
+{
+    va_list args, args_copy;
+    va_start(args, format);
+    va_copy(args_copy, args);
+    
+    int size = vsnprintf(NULL, 0, format, args_copy);
+    va_end(args_copy);
+
+    char *string = (char *)malloc(size + 1);
+    if (string == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        va_end(args);
+        return NULL;
+    }
+
+    vsnprintf(string, size + 1, format, args);
+    va_end(args);
+
+    return string;
+}
+
 static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     clear_canvas();
@@ -705,12 +741,15 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
 
     put_empty_row(1);
     put_game_logo(width, CENTER);
-    put_empty_row(3);
-    put_text("[TODO] Game statistics... in preparetion", width, CENTER);
     put_empty_row(1);
+    put_text("Game statistics", width, CENTER);
+    put_empty_row(3);
     put_text("NEW GAME [N]", width, CENTER);
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(4);
+
+    release_player(data->player_choosen_to_game);
+    data->player_choosen_to_game = NULL;
 
     if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
         return ERROR;
@@ -906,9 +945,7 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
         return ERROR;
     }
 
-    release_player(data->player_choosen_to_game); // TODO: this will be released in after_game_page
     release_game(game);
-
     return SUCCESS_GAME;
 }
 
