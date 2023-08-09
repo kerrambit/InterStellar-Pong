@@ -15,8 +15,17 @@
 #include "draw.h"
 #include <stdbool.h>
 
-int enable_terminal();
-int render_terminal(px_t line_width, bool special_regime, const char *volunatary_mess, int mess_length);
+typedef enum terminal_output_mode_t {
+    NORMAL_TEXT
+    TERMINAL_LOG,
+    APPROVAL,
+    WARNING,
+    ERROR,
+    N/A
+} terminal_output_mode_t;
+
+int enable_terminal(); // int enable_terminal(const char *default_mess, terminal_output_mode_t default_mess_mode, const char *special_regime_default_mess, terminal_output_mode_t special_regime_default_mess_mode);
+int render_terminal(px_t line_width, bool special_regime, const char *volunatary_mess, int mess_length); // int render_terminal(px_t line_width, bool special_flag, const char *volunatary_mess, terminal_output_mode_t mode);
 int process_command(char c, char **command);
 int remove_terminal_data();
 
