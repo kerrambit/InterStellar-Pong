@@ -65,18 +65,18 @@
 
 // ---------------------------------------- STATIC DECLARATIONS--------------------------------- //
 
-static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data);
-static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data);
-static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data);
-static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
+static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
+static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data);
-static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 
 static page_return_code_t load_not_found_page(px_t height, px_t width);
 static page_return_code_t load_error_page(px_t height, px_t width);
-static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data);
+static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 
-static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data);
+static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static players_array_t *load_players(const char* file_path);
 static page_t choose_pregame_page(page_loader_inner_data_t *data);
 static player_t *find_player(const char *name, const char *file_path);
@@ -217,30 +217,30 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
     }
 }
 
-page_return_code_t load_page(page_t page, px_t height, px_t width, page_loader_inner_data_t *data)
+page_return_code_t load_page(page_t page, px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     switch (page)
     {
     case MAIN_PAGE:
-        return load_main_page(height, width, data);
+        return load_main_page(height, width, data, terminal_data);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
         return ERROR;
     case GAME_PAGE:
         return load_game(height, GAME_WIDTH, data);
     case AFTER_GAME_PAGE:
-        return load_after_game_page(height, width, data);
+        return load_after_game_page(height, width, data, terminal_data);
     case PRE_CREATE_NEW_PLAYER_PAGE:
-        return load_pre_create_new_player_page(height, width, data);
+        return load_pre_create_new_player_page(height, width, data, terminal_data);
     case CHOOSE_PLAYER_PAGE:
-        return load_choose_player_page(height, width, data);
+        return load_choose_player_page(height, width, data, terminal_data);
     case ERROR_PAGE:
         return load_error_page(height, width);
     case CREATE_NEW_PLAYER_PAGE:
-        return load_create_new_player_page(height, width, data);
+        return load_create_new_player_page(height, width, data, terminal_data);
     case BACK_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE:
-        return load_quit_or_back_with_confirmation(height, width, data);
+        return load_quit_or_back_with_confirmation(height, width, data, terminal_data);
     case QUIT_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE:
-        return load_quit_or_back_with_confirmation(height, width, data);
+        return load_quit_or_back_with_confirmation(height, width, data, terminal_data);
     default:
         return load_not_found_page(height, width);
     }
@@ -275,7 +275,7 @@ const char *convert_page_2_string(page_t page)
  * @note Minimal height of main page is 12 pixels.
  * @return int 
  */
-static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data)
+static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -289,14 +289,14 @@ static page_return_code_t load_main_page(px_t height, px_t width, page_loader_in
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(5);
 
-    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+    if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
 
     return SUCCES;
 }
 
-static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data)
+static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -310,7 +310,7 @@ static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t 
     put_text("NO [N]", width, CENTER);
     put_empty_row(5);
 
-    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+    if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
 
@@ -510,7 +510,7 @@ static void put_player(px_t width, px_t button_width, px_t button_height, player
     put_button(width, button_width, button_height, result, CENTER, last, row_margin);
 }
 
-static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data)
+static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
     if (players == NULL) {
@@ -547,14 +547,14 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, page_
 
     release_players_array(players);
 
-     if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+     if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
     return SUCCES;
 }
 
-static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data)
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -570,7 +570,7 @@ static page_return_code_t load_pre_create_new_player_page(px_t height, px_t widt
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(4);
     
-    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+    if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
@@ -646,7 +646,7 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data)
     return true;
 }
 
-static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data)
+static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -668,27 +668,27 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
     if (data->curr_player_name != NULL && !data->curr_player_name_seen_flag) {
         if (STR_EQ(data->curr_player_name, INVALID_NAME)) {
             data->curr_player_name = NULL;
-            if (render_terminal(width, true, "\033[31m\033[3mThis name is invalid.\033[0m", 21) == -1) {
+            if (render_terminal(terminal_data, width, true, "This name is invalid.", TERMINAL_ERROR) == -1) {
                 return ERROR;
             }
         } else if (STR_EQ(data->curr_player_name, NOT_UNIQUE_NAME)) {
             data->curr_player_name = NULL;
-            if (render_terminal(width, true, "\033[31m\033[3mThis name is not unique.\033[0m", 24) == -1) {
+            if (render_terminal(terminal_data, width, true, "This name is not unique.", TERMINAL_ERROR) == -1) {
                 return ERROR;
             }
         } else if (STR_EQ(data->curr_player_name, NO_NAME_ENTERED)) {
             data->curr_player_name = NULL;
-            if (render_terminal(width, true, "\033[31m\033[3mNo name was entered.\033[0m", 20) == -1) {
+            if (render_terminal(terminal_data, width, true, "No name was entered.", TERMINAL_ERROR) == -1) {
                 return ERROR;
             }
-        } else if (render_terminal(width, true, "\033[32m\033[3mThis name is valid and unique.\033[0m", 30) == -1) {
+        } else if (render_terminal(terminal_data, width, true, "This name is valid and unique.", TERMINAL_APPROVAL) == -1) {
             return ERROR;
         }
         data->curr_player_name_seen_flag = true;
         return SUCCES;
     }
 
-    if (render_terminal(width, false, NULL, 0) == -1) {
+    if (render_terminal(terminal_data, width, false, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
@@ -717,7 +717,7 @@ static char *create_string(const char *format, ...)
     return string;
 }
 
-static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data)
+static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     put_empty_row(1);
     put_text("No statistics available for the game without the player.", width, CENTER);
@@ -726,14 +726,14 @@ static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inn
     put_text("QUIT [Q]", width, CENTER);
     put_empty_row(3);
 
-    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+    if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
     return SUCCES;
 }
 
-static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data)
+static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
     draw_borders(height, width);
@@ -743,7 +743,7 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
     put_empty_row(1);
 
     if (data->player_choosen_to_game == NULL) {
-        return handle_stats_for_no_player(width, data);
+        return handle_stats_for_no_player(width, data, terminal_data);
     }
 
     player_t *updated_player = find_player(data->player_choosen_to_game->name, PLAYERS_DATA_PATH);
@@ -796,7 +796,7 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
     free(level_info);
     free(intro);
 
-    if (render_terminal(width, data->terminal_signal, NULL, 0) == -1) {
+    if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     

@@ -14,6 +14,7 @@
 
 #include "draw.h"
 #include "player.h"
+#include "terminal.h"
 
 typedef enum page_t {
     NO_PAGE,
@@ -50,7 +51,7 @@ typedef struct page_loader_inner_data_t {
 
 page_t find_page(page_t current_page, const char *command, page_loader_inner_data_t *data);
 const char *convert_page_2_string(page_t page);
-page_return_code_t load_page(page_t page, px_t height, px_t width, page_loader_inner_data_t *data);
+page_return_code_t load_page(page_t page, px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 page_loader_inner_data_t *create_page_loader_inner_data();
 void release_plage_loader_inner_data(page_loader_inner_data_t *data);
 

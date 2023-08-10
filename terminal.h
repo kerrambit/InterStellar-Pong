@@ -16,17 +16,27 @@
 #include <stdbool.h>
 
 typedef enum terminal_output_mode_t {
-    NORMAL_TEXT
+    TERMINAL_NORMAL_TEXT,
     TERMINAL_LOG,
-    APPROVAL,
-    WARNING,
-    ERROR,
-    N/A
+    TERMINAL_APPROVAL,
+    TERMINAL_WARNING,
+    TERMINAL_ERROR,
+    TERMINAL_N_A
 } terminal_output_mode_t;
 
-int enable_terminal(); // int enable_terminal(const char *default_mess, terminal_output_mode_t default_mess_mode, const char *special_regime_default_mess, terminal_output_mode_t special_regime_default_mess_mode);
-int render_terminal(px_t line_width, bool special_regime, const char *volunatary_mess, int mess_length); // int render_terminal(px_t line_width, bool special_flag, const char *volunatary_mess, terminal_output_mode_t mode);
-int process_command(char c, char **command);
-int remove_terminal_data();
+typedef struct terminal_data_t {
+    bool is_terminal_enabled;
+    unsigned long curr_file_cursor;
+    unsigned long curr_file_line_size;
+    char *terminal_default_mess;
+    terminal_output_mode_t terminal_default_mess_mode;
+    char *terminal_special_flag_default_mess;
+    terminal_output_mode_t terminal_spacial_flag_default_mess_mode;
+} terminal_data_t;
+
+terminal_data_t *enable_terminal(char *default_mess, terminal_output_mode_t default_mess_mode, char *special_flag_default_mess, terminal_output_mode_t special_flag_default_mess_mode);
+int render_terminal(terminal_data_t *terminal_data, px_t line_width, bool special_flag, char *volunatary_mess, terminal_output_mode_t mode);
+int process_command(terminal_data_t *terminal_data, char c, char **command); 
+int close_terminal(terminal_data_t *terminal_data);
 
 #endif
