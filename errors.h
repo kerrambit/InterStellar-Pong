@@ -1,7 +1,13 @@
 /**
  * @file errors.h
  * @author Marek Eibel
- * @brief Groups all errors codes.
+ * @brief Definition of error codes used in the application.
+ * 
+ * This header file centralizes the definition of error codes used throughout
+ * the application. It provides a clear reference for the various
+ * error conditions that might occur during the execution of the program. By grouping
+ * the error codes in this file, it becomes easier to manage and maintain error handling.
+ * 
  * @version 0.1
  * @date 2023-07-18
  */

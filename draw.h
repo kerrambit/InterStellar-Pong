@@ -43,11 +43,6 @@ typedef enum colour_t {
     LIGHT_CYAN
 } colour_t;
 
-typedef enum object_type_t {
-    CIRCLE,
-    RECTANGLE
-} object_type_t;
-
 typedef struct pixel_buffer_t {
     px_t height;
     px_t width;
@@ -72,14 +67,6 @@ typedef struct scene_t {
     rectangle_t **scene;
 } scene_t;
 
-typedef struct circle_t {
-    px_t position_x;
-    px_t position_y;
-    px_t radius;
-    colour_t colour;
-    colour_t fill_colour;
-} circle_t;
-
 void clear_canvas(void);
 void set_cursor_at_beginning_of_window(void);
 void set_cursor_at_beginning_of_canvas(void);
@@ -97,12 +84,10 @@ const char* colour_2_string(colour_t colour);
 pixel_buffer_t *create_pixel_buffer(px_t height, px_t width);
 void release_pixel_buffer(pixel_buffer_t *pixel_buffer);
 void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene);
-ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type);
+ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *object);
 void reset_pixel_buffer(pixel_buffer_t *pixel_buffer);
 
-circle_t *create_circle(px_t position_x, px_t position_y, px_t radius, colour_t colour, colour_t fill_colour);
 rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour, const char *name);
-void release_circle(circle_t *square);
 void release_rectangle(rectangle_t *rectangle);
 
 scene_t *create_scene();

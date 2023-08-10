@@ -1,16 +1,23 @@
 /**
  * @file interstellar_pong.c
  * @author Marek Eibel
- * @brief InterStellar Pong is a game (...).
+ * @brief InterStellar Pong - A terminal-based resource-collecting Pong game.
+ * 
+ * InterStellar Pong is a simple terminal-based game inspired by the classic Pong
+ * with an exciting twist! In this game, players not only play the traditional Pong,
+ * but also collect valuable resources such as stone, iron, copper, and gold. These
+ * resources are crucial for progressing through higher levels, creating an engaging
+ * and unique gameplay experience.
+ * 
  * @version 0.1
  * @date 2023-07-16
  * 
  * @copyright Copyright (c) 2023
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -20,17 +27,29 @@
 #include "page_loader.h"
 #include "terminal.h"
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------------- MACROS --------------------------------------------- //
 
-#define CANVAS_WIDTH 112
-#define CANVAS_HEIGHT 22
+#define WINDOW_WIDTH 112
+#define WINDOW_HEIGHT 22
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static struct termios init_termios();
+static void restore_terminal_attributes(const struct termios *original_termios);
 
-// --------------------------------------------------------------------------------------------- //
+// ----------------------------------------- PROGRAM-------------------------------------------- //
 
+/**
+ * @brief The main function for the InterStellar Pong game.
+ *
+ * This function is the entry point for the InterStellar Pong game. It initializes
+ * the game environment, handles user input, loads and renders pages, and manages
+ * the program loop until the user exits the game. It ensures that the terminal
+ * attributes are set correctly, and that the game environment is cleaned up
+ * properly before exiting.
+ *
+ * @return Returns EXIT_SUCCESS if the program runs successfully, or EXIT_FAILURE on errors.
+ */
 int main() 
 {   
     hide_cursor();
@@ -45,20 +64,20 @@ int main()
 
     struct termios old_term = init_termios();
 
-    // set up data storage for page_loader functions
+    // create data holder for page loader
     page_loader_inner_data_t *data = create_page_loader_inner_data();
     if (data == NULL) {
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+        restore_terminal_attributes(&old_term);
         (void)close_terminal(terminal_data);
         show_cursor();
         return EXIT_FAILURE;
     }
 
     // try to load and render main page
-    if (load_page(MAIN_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, data, terminal_data) == ERROR) {
+    if (load_page(MAIN_PAGE, WINDOW_HEIGHT, WINDOW_WIDTH, data, terminal_data) == ERROR) {
         (void)close_terminal(terminal_data);
-        tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
-        release_plage_loader_inner_data(data);
+        restore_terminal_attributes(&old_term);
+        release_page_loader_inner_data(data);
         show_cursor();
         return EXIT_FAILURE;
     }
@@ -66,7 +85,7 @@ int main()
     int c;
     page_t current_page = MAIN_PAGE;
 
-    // program while loop
+    // program main loop
     while ((c = getchar()) != EOF) {
 
         char *command = NULL;
@@ -87,20 +106,20 @@ int main()
         }
 
         free(command);
-        page_return_code_t load_page_return_code = load_page(current_page, CANVAS_HEIGHT, CANVAS_WIDTH, data, terminal_data);
+        page_return_code_t load_page_return_code = load_page(current_page, WINDOW_HEIGHT, WINDOW_WIDTH, data, terminal_data);
 
         if (load_page_return_code == ERROR) {
             break;
         } else if (load_page_return_code == SUCCESS_GAME) {
             current_page = AFTER_GAME_PAGE;
-            if (load_page(AFTER_GAME_PAGE, CANVAS_HEIGHT, CANVAS_WIDTH, data, terminal_data) == ERROR) {
+            if (load_page(AFTER_GAME_PAGE, WINDOW_HEIGHT, WINDOW_WIDTH, data, terminal_data) == ERROR) {
                 break;
             } 
         }
     }
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
-    release_plage_loader_inner_data(data);
+    restore_terminal_attributes(&old_term);
+    release_page_loader_inner_data(data);
 
     if (close_terminal(terminal_data) == -1) {
         show_cursor();
@@ -112,6 +131,15 @@ int main()
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Initializes the terminal settings for interactive input.
+ *
+ * This function sets up the terminal settings for interactive input, disabling
+ * canonical mode and echoing. It returns the original terminal settings which
+ * can be restored later.
+ *
+ * @return The original struct termios settings before modification.
+ */
 static struct termios init_termios()
 {
     struct termios old_term, new_term;
@@ -122,4 +150,19 @@ static struct termios init_termios()
     tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
 
     return old_term;
+}
+
+/**
+ * @brief Restores terminal attributes for a file descriptor.
+ *
+ * This function is used to restore terminal attributes for a specified
+ * file descriptor. It takes a pointer to the termios structure containing
+ * the original attributes and applies them to the terminal using the
+ * tcsetattr() command with the TCSANOW flag.
+ *
+ * @param original_termios A pointer to the termios structure containing the original attributes.
+ */
+static void restore_terminal_attributes(const struct termios *original_termios)
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, original_termios);
 }

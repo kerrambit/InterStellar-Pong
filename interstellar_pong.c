@@ -214,13 +214,13 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
     simulate_enemy_paddle_movement(find_object(game, "enemy"), find_object(game, "ball"), game->height);
 
     // put objects pixel in pixel buffer
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"), RECTANGLE);
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_1"), RECTANGLE);
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_2"), RECTANGLE);
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"), RECTANGLE);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_1"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_2"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"));
 
     // collision detection and handling
-    ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"), RECTANGLE);
+    ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"));
     if (detect_collision(collision_ID, find_object(game, "player"))) {
         increment_game_ticks(game);
         handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "player"));

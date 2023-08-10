@@ -1,23 +1,25 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "player.h"
 #include "errors.h"
+#include "player.h"
 #include "utils.h"
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------------- MACROS --------------------------------------------- //
 
 #define CLEAN_AND_RETURN_WITH_FAILURE free(line_copy); free(name); return NULL
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static bool save_number(char *token, int *data_holder);
 
-// --------------------------------------------------------------------------------------------- //
+// ----------------------------------------- PROGRAM-------------------------------------------- //
 
 player_t *create_player(char* name, int level, int stone, int copper, int iron, int gold)
 {
+    const int NUMBER_OF_PLAYER_HEARTS = 3;
+
     player_t *player = malloc(sizeof(player_t));
     if (player == NULL) {
         return NULL;
@@ -31,18 +33,18 @@ player_t *create_player(char* name, int level, int stone, int copper, int iron, 
 
     strcpy(player->name, name);
 
-    player->level = level; player->stone = stone; player->copper = copper; player->iron = iron; player->gold = gold; player->hearts = 3;
+    player->level = level; player->stone = stone; player->copper = copper; player->iron = iron; player->gold = gold; player->hearts = NUMBER_OF_PLAYER_HEARTS;
     return player;
 }
 
-static bool save_number(char *token, int *data_holder)
+void release_player(player_t *player)
 {
-    if (token == NULL || !convert_string_2_int(token, data_holder) || *data_holder < 0) {
-        resolve_error(INVALID_DATA_IN_FILE);
-        return false;
+    if (player != NULL) {
+        if (player->name != NULL) {
+            free(player->name);
+        }
+        free(player);
     }
-
-    return true;
 }
 
 player_t *create_player_from_string(char* string)
@@ -110,25 +112,17 @@ player_t *create_player_from_string(char* string)
     return player;
 }
 
-void release_player(player_t *player)
-{
-    if (player != NULL) {
-        if (player->name != NULL) {
-            free(player->name);
-        }
-        free(player);
-    }
-}
-
 players_array_t *create_players_array()
 {
+    const int BEGIN_ARRAY_SIZE = 4;
+
     players_array_t *array = malloc(sizeof(players_array_t));
     if (array == NULL) {
         return NULL;
     }
 
     array->count = 0;
-    array->length = 4;
+    array->length = BEGIN_ARRAY_SIZE;
     array->players = malloc(sizeof(player_t*) * array->length);
 
     if (array->players == NULL) {
@@ -155,12 +149,14 @@ void release_players_array(players_array_t *players_array)
 
 player_t *add_to_players_array(players_array_t *players_array, player_t *player)
 {
+    const int GROWTH_FACTOR = 2;
+
     if (players_array == NULL || player == NULL) {
         return NULL;
     }
 
     if (players_array->count >= players_array->length) {
-        players_array->length *= 2;
+        players_array->length *= GROWTH_FACTOR;
         player_t **new_players_array = realloc(players_array->players, sizeof(player_t*) * players_array->length);
         if (new_players_array == NULL) {
             return NULL;
@@ -170,4 +166,25 @@ player_t *add_to_players_array(players_array_t *players_array, player_t *player)
 
     players_array->players[players_array->count++] = player;
     return player;
+}
+
+/**
+ * @brief Saves a number from a string token to a data holder.
+ *
+ * This function takes a string token as input and attempts to convert it
+ * to an integer. If the conversion is successful and the resulting integer is non-negative,
+ * it is stored in the provided data holder.
+ *
+ * @param token The string token containing the number to be converted and saved.
+ * @param data_holder A pointer to an integer to store the converted value.
+ * @return Returns true if the conversion and saving are successful, or false otherwise.
+ */
+static bool save_number(char *token, int *data_holder)
+{
+    if (token == NULL || !convert_string_2_int(token, data_holder) || *data_holder < 0) {
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    return true;
 }

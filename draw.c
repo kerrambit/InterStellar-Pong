@@ -405,56 +405,24 @@ void release_pixel_buffer(pixel_buffer_t *pixel_buffer)
     }
 }
 
-ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, void *obj, object_type_t obj_type)
+ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *object)
 {
-    if (obj == NULL) {
+    if (object == NULL) {
         return UNDEFINIED_ID;
     }
 
-    switch (obj_type)
-    {
-
-    case CIRCLE:
-        circle_t *circle_obj = (circle_t*) obj;
-        const int HEIGHT = 2 * circle_obj->radius;
-        const int WIDTH = 4 * circle_obj->radius;
-
-        for (px_t i = 0; i < HEIGHT + 1; ++i) {
-            for (px_t j = 0 ; j < WIDTH - 1; ++j) {
-
-                int x = j - WIDTH / 2;
-                int y = i - HEIGHT / 2;
-
-                if (SQUARE(x) + SQUARE(y) < SQUARE(circle_obj->radius)) {
-                    int pixel_x = circle_obj->position_x + x;
-                    int pixel_y = circle_obj->position_y + y;
-                    if (pixel_x >= 0 && pixel_x < pixel_buffer->width && pixel_y >= 0 && pixel_y < pixel_buffer->height) {
-                        pixel_buffer->buff[pixel_y * pixel_buffer->width + pixel_x] = circle_obj->colour;
-                    }
+    for (px_t i = object->position_y; i < object->position_y + object->side_length_2; ++i) {
+        for (px_t j = object->position_x; j < object->position_x + object->side_length_1; ++j) {
+            if((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
+                if (pixel_buffer->buff[i * pixel_buffer->width + j] != UNDEFINIED_ID) {
+                    return pixel_buffer->buff[i * pixel_buffer->width + j];
+                } else {
+                    pixel_buffer->buff[i * pixel_buffer->width + j] = object->ID;
                 }
-            }
+            }   
         }
-        break;
-
-    case RECTANGLE:
-
-        rectangle_t *rectangle_obj = (rectangle_t*)obj;
-        for (px_t i = rectangle_obj->position_y; i < rectangle_obj->position_y + rectangle_obj->side_length_2; ++i) {
-            for (px_t j = rectangle_obj->position_x; j < rectangle_obj->position_x + rectangle_obj->side_length_1; ++j) {
-                if((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
-                    if (pixel_buffer->buff[i * pixel_buffer->width + j] != UNDEFINIED_ID) {
-                        return pixel_buffer->buff[i * pixel_buffer->width + j];
-                    } else {
-                        pixel_buffer->buff[i * pixel_buffer->width + j] = rectangle_obj->ID;
-                    }
-                }   
-            }
-        }
-        break;
-
-    default:
-        break;
     }
+
     return UNDEFINIED_ID;
 }
 
@@ -465,22 +433,6 @@ void reset_pixel_buffer(pixel_buffer_t *pixel_buffer)
             pixel_buffer->buff[i * pixel_buffer->width + j] = UNDEFINIED_ID;
         }
     }
-}
-
-circle_t *create_circle(px_t position_x, px_t position_y, px_t radius, colour_t colour, colour_t fill_colour)
-{
-    circle_t *circle = malloc(sizeof(circle_t));
-    if (circle == NULL) {
-        return NULL;
-    }
-
-    circle->position_x = position_x; circle->position_y = position_y; circle->radius = radius; circle->colour = colour; circle->fill_colour = fill_colour;
-    return circle;
-}
-
-void release_circle(circle_t *circle)
-{
-    free(circle);
 }
 
 rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour, const char *name)

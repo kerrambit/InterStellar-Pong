@@ -1018,7 +1018,7 @@ page_loader_inner_data_t *create_page_loader_inner_data()
     return data;
 }
 
-void release_plage_loader_inner_data(page_loader_inner_data_t *data)
+void release_page_loader_inner_data(page_loader_inner_data_t *data)
 {
     if (data != NULL) {
         free(data);
