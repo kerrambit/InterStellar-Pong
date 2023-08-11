@@ -24,32 +24,34 @@
 #define NO_NAME_ENTERED ";;;"
 
 /**
- * @brief Data structure representing a player.
+ * @struct player_t
+ * @brief Data structure representing a player in Interstellar Pong.
  *
  * The `player_t` structure defines attributes that represent a player's information. It is used to store
  * information about individual players in the game.
  */
 typedef struct player_t {
-    char *name;
-    int level;
-    int stone;
-    int copper;
-    int iron;
-    int gold;
-    int hearts;
+    char *name;    /** The player's name. */
+    int level;     /** The player's level in the game. */
+    int stone;     /** The quantity of stone resources collected by the player. */
+    int copper;    /** The quantity of copper resources collected by the player. */
+    int iron;      /** The quantity of iron resources collected by the player. */
+    int gold;      /** The quantity of gold resources collected by the player. */
+    int hearts;    /** The number of remaining hearts (health) for the player. */
 } player_t;
 
 /**
- * @brief Data structure representing an array of players.
+ * @struct players_array_t
+ * @brief Data structure representing an array of players in Interstellar Pong.
  *
  * The `players_array_t` structure is used to manage an array of player instances.
  * It contains an array of player pointers, along with information about the number
  * of players in the array (`count`) and the allocated length of the array (`length`).
  */
 typedef struct players_array_t {
-    player_t **players;
-    int count;
-    int length;
+    player_t **players;   /** An array of pointers to player instances. */
+    int count;            /** The current number of players in the array. */
+    int length;           /** The allocated length of the player array. */
 } players_array_t;
 
 /**

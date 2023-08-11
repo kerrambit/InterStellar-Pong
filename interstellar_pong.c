@@ -2,35 +2,38 @@
 
 #include "interstellar_pong.h"
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
-static rectangle_t *find_object(game_t *game, const char *name);
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
-static void move_ball(rectangle_t *ball);
+static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle);
+static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
+static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game);
 static bool detect_collision(ID_t collision_ID, rectangle_t *object);
-static void handleBallAndPaddleCollision(rectangle_t *ball, rectangle_t *paddle);
-static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game);
-static void handleBallAndMeteorCollision(rectangle_t *meteor, game_t *game);
+static void bounce_ball(rectangle_t *ball, px_t width, px_t height);
+static rectangle_t *find_object(game_t *game, const char *name);
+static void move_ball(rectangle_t *ball);
 
+static int get_width(game_t *game);
+static int get_height(game_t *game);
 static ID_t get_ID(rectangle_t *object);
-static void set_x_speed(rectangle_t *object, int speed);
-static void set_y_speed(rectangle_t *object, int speed);
+static int get_game_ticks(game_t *game);
+static char *get_name(rectangle_t *object);
 static int get_x_speed(rectangle_t *object);
 static int get_y_speed(rectangle_t *object);
+static void increment_game_ticks(game_t *game);
 static int get_x_position(rectangle_t *object);
-static void set_x_position(rectangle_t *object, px_t position);
 static int get_y_position(rectangle_t *object);
-static void set_y_position(rectangle_t *object, px_t position);
+static colour_t get_colour(rectangle_t *object);
 static int get_side_length_1(rectangle_t *object);
 static int get_side_length_2(rectangle_t *object);
-static int get_game_ticks(game_t *game);
-static void increment_game_ticks(game_t *game);
-static colour_t get_colour(rectangle_t *object);
+static void set_x_speed(rectangle_t *object, int speed);
+static void set_y_speed(rectangle_t *object, int speed);
 static void set_colour(rectangle_t *object, colour_t colour);
-static char *get_name(rectangle_t *object);
+static void set_x_position(rectangle_t *object, px_t position);
+static void set_y_position(rectangle_t *object, px_t position);
 
-// --------------------------------------------------------------------------------------------- //
+// ----------------------------------------- PROGRAM-------------------------------------------- //
 
 game_t *init_game(player_t *player, px_t height, px_t width)
 {
@@ -40,9 +43,9 @@ game_t *init_game(player_t *player, px_t height, px_t width)
         return NULL;
     }
 
-    game->game_state = STOPPED;
     game->height = height;
     game->width = width;
+    game->game_state = STOPPED;
     game->scene = NULL;
     game->game_ticks = 0;
     game->enemy = create_player("enemy", 0, 0, 0, 0, 0);
@@ -74,6 +77,26 @@ void start_game(game_t *game)
     game->game_state = RUNNING;
 }
 
+game_state_t get_game_state(game_t *game)
+{
+    return game->game_state;
+}
+
+void end_game(game_t *game)
+{
+    game->game_state = STOPPED;
+}
+
+void release_game(game_t *game)
+{
+    if (game != NULL) {
+        release_player(game->player);
+        release_player(game->enemy);
+        release_scene(game->scene);
+        free(game);
+    }
+}
+
 scene_t *init_scene(game_t *game)
 {
     scene_t *scene = create_scene();
@@ -91,6 +114,48 @@ scene_t *init_scene(game_t *game)
     }
 
     game->scene = scene;
+    return game->scene;
+}
+
+scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
+{
+    move_ball(find_object(game, "ball"));
+    bounce_ball(find_object(game, "ball"), game->width, game->height);
+    simulate_enemy_paddle_movement(find_object(game, "enemy"), find_object(game, "ball"), game->height);
+
+    // put objects pixel in pixel buffer
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_1"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_2"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"));
+
+    // collision detection and handling
+    ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"));
+    if (detect_collision(collision_ID, find_object(game, "player"))) {
+        increment_game_ticks(game);
+        handle_ball_and_paddle_collision(find_object(game, "ball"), find_object(game, "player"));
+    }
+    if (detect_collision(collision_ID, find_object(game, "enemy"))) {
+        increment_game_ticks(game);
+        handle_ball_and_paddle_collision(find_object(game, "ball"), find_object(game, "enemy"));
+    }
+    if (detect_collision(collision_ID, find_object(game, "meteor_1"))) {
+        handle_ball_and_meteor_collision(find_object(game, "meteor_1"), game);
+    }
+    if (detect_collision(collision_ID, find_object(game, "meteor_2"))) {
+        handle_ball_and_meteor_collision(find_object(game, "meteor_2"), game);
+    }
+
+    // check ball and bouderies
+    if (!check_ball_boundary_collision(find_object(game, "ball"), game)) {
+        increment_game_ticks(game);
+    }
+
+    // end game
+    if (game->enemy->hearts <= 0 || game->player->hearts <= 0) {
+        end_game(game);
+    }
+
     return game->scene;
 }
 
@@ -115,22 +180,41 @@ void handle_event(game_t *game, char c)
     }
 }
 
+/**
+ * @brief Moves the ball by updating its position based on its speed.
+ * 
+ * @param ball The ball rectangle to move.
+ */
 static void move_ball(rectangle_t *ball)
 {
-    ball->position_x += ball->x_speed;
-    ball->position_y += ball->y_speed;
+    set_x_position(ball, get_x_position(ball) + get_x_speed(ball));
+    set_y_position(ball, get_y_position(ball) + get_y_speed(ball));
 }
 
+/**
+ * @brief Bounces the ball off the game boundaries if it hits them.
+ * 
+ * @param ball The ball rectangle to check and update.
+ * @param width The width of the game area.
+ * @param height The height of the game area.
+ */
 static void bounce_ball(rectangle_t *ball, px_t width, px_t height)
 {
-    if(ball->position_x >= width - 2 || ball->position_x <= 0) {
+    if(get_x_position(ball) >= width - 2 || get_x_position(ball) <= 0) {
         set_x_speed(ball, get_x_speed(ball) * (-1));
     }
-    if (ball->position_y >= height - ball->side_length_2 || ball->position_y <= 0) {
+    if (get_y_position(ball) >= height - get_side_length_2(ball) || get_y_position(ball) <= 0) {
         set_y_speed(ball, get_y_speed(ball) * (-1));
     }     
 }
 
+/**
+ * @brief Simulates the movement of the enemy paddle based on ball position.
+ * 
+ * @param enemy The enemy paddle rectangle.
+ * @param ball The ball rectangle.
+ * @param height The height of the game area.
+ */
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height)
 {
     int ball_center = get_y_position(ball) + (get_side_length_2(ball) / 2);
@@ -151,32 +235,53 @@ static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball
     }
 }
 
+/**
+ * @brief Detects if a collision with the specified collision ID occurred.
+ * 
+ * @param collision_ID The collision ID to compare with.
+ * @param object The rectangle object to check for collision.
+ * @return True if collision occurred, false otherwise.
+ */
 static bool detect_collision(ID_t collision_ID, rectangle_t *object)
 {
     return collision_ID == get_ID(object);
 }
 
-static void handleBallAndPaddleCollision(rectangle_t *ball, rectangle_t *paddle)
+/**
+ * @brief Handles the collision between the ball and a paddle.
+ * 
+ * @param ball The ball rectangle.
+ * @param paddle The paddle rectangle.
+ */
+static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle)
 {
-    int paddle_center = paddle->position_y + (paddle->side_length_2 / 2);
-    int ball_center = ball->position_y + (ball->side_length_2 / 2);
+    int paddle_center = get_y_position(paddle) + (get_side_length_2(paddle) / 2);
+    int ball_center = get_y_position(ball) + (get_side_length_2(ball) / 2);
     int vertical_distance = ball_center - paddle_center;
 
-    if (ball->y_speed == 0) {
-        ball->y_speed = 1;
+    if (get_y_speed(ball) == 0) {
+        set_y_speed(ball, 1);
     }
     if (vertical_distance > 0) {
-        ball->y_speed = abs(ball->y_speed);
+        set_y_speed(ball, abs(get_y_speed(ball)));
     } else if (vertical_distance < 0) {
-        ball->y_speed = -1 * abs(ball->y_speed);
+        set_y_speed(ball, -1 * abs(get_y_speed(ball)));
     } else {
-        ball->y_speed = 0 + (rand() % 1) * (((rand() % 2) == 0) ? 1 : -1);
+        set_y_speed(ball, (rand() % 1) * (((rand() % 2) == 0) ? 1 : -1));
     }
 
-    ball->x_speed = -1 * ball->x_speed;
+    set_x_speed(ball, -1 * get_x_speed(ball));
 }
 
-static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game)
+/**
+ * @brief Checks if the ball collides with the game boundaries.
+ *        Updates player and enemy hearts accordingly.
+ * 
+ * @param ball The ball rectangle.
+ * @param game The game instance.
+ * @return True if the ball is within boundaries, false otherwise.
+ */
+static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game)
 {
     bool is_in_bound = true;
     if (get_x_position(ball) <= 2) {
@@ -186,7 +291,7 @@ static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game)
     }
 
     if (!is_in_bound) {
-        if (game->game_ticks % 2 == 0) {
+        if (get_game_ticks(game) % 2 == 0) {
             game->player->hearts--;
         } else {
             game->enemy->hearts--;
@@ -196,79 +301,30 @@ static bool checkBallBoundaryCollision(rectangle_t *ball, game_t *game)
     return is_in_bound;
 }
 
-static void handleBallAndMeteorCollision(rectangle_t *meteor, game_t *game)
+/**
+ * @brief Handles the collision between the ball and a meteor object.
+ * 
+ * @param meteor The meteor rectangle.
+ * @param game The game instance.
+ */
+static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game)
 {
-    if (game->game_ticks % 2 != 0) {
+    if (get_game_ticks(game) % 2 != 0) {
         game->player->stone++;
     }
 
     set_colour(meteor, DARK_GRAY);
-    set_x_position(meteor, (rand() % (game->width - 10)) + 5);
-    set_y_position(meteor, (rand() % (game->height - 10)) + 5);
+    set_x_position(meteor, (rand() % (get_width(game) - 10)) + 5);
+    set_y_position(meteor, (rand() % (get_height(game) - 10)) + 5);
 }
 
-scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
-{
-    move_ball(find_object(game, "ball"));
-    bounce_ball(find_object(game, "ball"), game->width, game->height);
-    simulate_enemy_paddle_movement(find_object(game, "enemy"), find_object(game, "ball"), game->height);
-
-    // put objects pixel in pixel buffer
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"));
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_1"));
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_2"));
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"));
-
-    // collision detection and handling
-    ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"));
-    if (detect_collision(collision_ID, find_object(game, "player"))) {
-        increment_game_ticks(game);
-        handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "player"));
-    }
-    if (detect_collision(collision_ID, find_object(game, "enemy"))) {
-        increment_game_ticks(game);
-        handleBallAndPaddleCollision(find_object(game, "ball"), find_object(game, "enemy"));
-    }
-    if (detect_collision(collision_ID, find_object(game, "meteor_1"))) {
-        handleBallAndMeteorCollision(find_object(game, "meteor_1"), game);
-    }
-    if (detect_collision(collision_ID, find_object(game, "meteor_2"))) {
-        handleBallAndMeteorCollision(find_object(game, "meteor_2"), game);
-    }
-
-    // check ball and bouderies
-    if (!checkBallBoundaryCollision(find_object(game, "ball"), game)) {
-        increment_game_ticks(game);
-    }
-
-    // end game
-    if (game->enemy->hearts <= 0 || game->player->hearts <= 0) {
-        end_game(game);
-    }
-
-    return game->scene;
-}
-
-game_state_t get_game_state(game_t *game)
-{
-    return game->game_state;
-}
-
-void end_game(game_t *game)
-{
-    game->game_state = STOPPED;
-}
-
-void release_game(game_t *game)
-{
-    if (game != NULL) {
-        release_player(game->player);
-        release_player(game->enemy);
-        release_scene(game->scene);
-        free(game);
-    }
-}
-
+/**
+ * @brief Finds and returns the rectangle object with the specified name in the game scene.
+ * 
+ * @param game The game instance.
+ * @param name The name of the rectangle object to find.
+ * @return A pointer to the found rectangle object, or NULL if not found.
+ */
 static rectangle_t *find_object(game_t *game, const char *name)
 {
     for (int i = 0; i < game->scene->number_of_objects; ++i) {
@@ -279,6 +335,20 @@ static rectangle_t *find_object(game_t *game, const char *name)
     return NULL;
 }
 
+/**
+ * @brief Creates a rectangle object, adds it to the scene, and checks for success.
+ * 
+ * @param scene The scene to which to add the rectangle object.
+ * @param position_x The x-coordinate of the rectangle's position.
+ * @param position_y The y-coordinate of the rectangle's position.
+ * @param side_length_1 The length of the rectangle's first side.
+ * @param side_length_2 The length of the rectangle's second side.
+ * @param x_speed The horizontal speed of the rectangle.
+ * @param y_speed The vertical speed of the rectangle.
+ * @param colour The colour of the rectangle.
+ * @param name The name of the rectangle object.
+ * @return True if creation and addition were successful, false otherwise.
+ */
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name)
 {
     rectangle_t *object = create_rectangle(position_x, position_y, side_length_1, side_length_2, x_speed, y_speed, colour, name);
@@ -298,81 +368,177 @@ static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x
 
 // ------------------------------------------- GETTERS & SETTERS ------------------------------- //
 
+/**
+ * @brief Gets the ID of the rectangle object.
+ * 
+ * @param object The rectangle object.
+ * @return The object's ID.
+ */
 static ID_t get_ID(rectangle_t *object)
 {
     return object->ID;
 }
 
+/**
+ * @brief Sets the horizontal speed of the specified rectangle object.
+ * 
+ * @param object The rectangle object to modify.
+ * @param speed The new horizontal speed to set.
+ */
 static void set_x_speed(rectangle_t *object, int speed)
 {
     object->x_speed = speed;
 }
 
+/**
+ * @brief Retrieves the horizontal speed of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The horizontal speed of the object.
+ */
 static int get_x_speed(rectangle_t *object)
 {
     return object->x_speed;
 }
 
+/**
+ * @brief Sets the vertical speed of the specified rectangle object.
+ * 
+ * @param object The rectangle object to modify.
+ * @param speed The new vertical speed to set.
+ */
 static void set_y_speed(rectangle_t *object, int speed)
 {
     object->y_speed = speed;
 }
 
+/**
+ * @brief Retrieves the vertical speed of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The vertical speed of the object.
+ */
 static int get_y_speed(rectangle_t *object)
 {
     return object->y_speed;
 }
 
+/**
+ * @brief Retrieves the x-coordinate position of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The x-coordinate position of the object.
+ */
 static int get_x_position(rectangle_t *object)
 {
     return object->position_x;
 }
 
+/**
+ * @brief Sets the x-coordinate position of the specified rectangle object.
+ * 
+ * @param object The rectangle object to modify.
+ * @param position The new x-coordinate position to set.
+ */
 static void set_x_position(rectangle_t *object, px_t position)
 {
     object->position_x = position;
 }
 
+/**
+ * @brief Retrieves the y-coordinate position of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The y-coordinate position of the object.
+ */
 static int get_y_position(rectangle_t *object)
 {
     return object->position_y;
 }
 
+/**
+ * @brief Sets the y-coordinate position of the specified rectangle object.
+ * 
+ * @param object The rectangle object to modify.
+ * @param position The new y-coordinate position to set.
+ */
 static void set_y_position(rectangle_t *object, px_t position)
 {
     object->position_y = position;
 }
 
+/**
+ * @brief Retrieves the length of the first side of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The length of the first side of the object.
+ */
 static int get_side_length_1(rectangle_t *object)
 {
     return object->side_length_1;
 }
 
+/**
+ * @brief Retrieves the length of the second side of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The length of the second side of the object.
+ */
 static int get_side_length_2(rectangle_t *object)
 {
     return object->side_length_2;
 }
 
+/**
+ * @brief Retrieves the number of game ticks (updates) that have occurred.
+ * 
+ * @param game The game instance to query.
+ * @return The number of game ticks.
+ */
 static int get_game_ticks(game_t *game)
 {
     return game->game_ticks;
 }
 
+/**
+ * @brief Increments the number of game ticks (updates) for the specified game instance.
+ * 
+ * @param game The game instance to update.
+ */
 static void increment_game_ticks(game_t *game)
 {
     game->game_ticks++;
 }
 
+/**
+ * @brief Retrieves the colour of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return The colour of the object.
+ */
 static colour_t get_colour(rectangle_t *object)
 {
     return object->colour;
 }
 
+/**
+ * @brief Sets the colour of the specified rectangle object.
+ * 
+ * @param object The rectangle object to modify.
+ * @param colour The new colour to set.
+ */
 static void set_colour(rectangle_t *object, colour_t colour)
 {
     object->colour = colour;
 }
 
+/**
+ * @brief Retrieves a dynamically allocated copy of the name of the specified rectangle object.
+ * 
+ * @param object The rectangle object to query.
+ * @return A pointer to the dynamically allocated name string.
+ * @note The returned pointer should be freed when no longer needed.
+ */
 static char *get_name(rectangle_t *object)
 {
     char *name = malloc(strlen(object->name) + 1);
@@ -382,4 +548,26 @@ static char *get_name(rectangle_t *object)
     }
 
     strcpy(name, object->name);
+}
+
+/**
+ * @brief Retrieves the width of the game window.
+ * 
+ * @param game The game object to query.
+ * @return The width of the game.
+ */
+static int get_width(game_t *game)
+{
+    return game->width;
+}
+
+/**
+ * @brief Retrieves the height of the game window.
+ * 
+ * @param game The game object to query.
+ * @return The height of the game.
+ */
+static int get_height(game_t *game)
+{
+    return game->height;
 }

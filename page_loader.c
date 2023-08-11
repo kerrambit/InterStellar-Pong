@@ -1,100 +1,56 @@
+#include <stdbool.h>
 #include <stdarg.h>
-#include <sys/select.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <sys/select.h>
 #include <time.h>
-#include <stdbool.h>
+#include <unistd.h>
 
-#include "page_loader.h"
-#include "utils.h"
 #include "draw.h"
 #include "errors.h"
-#include "terminal.h"
 #include "interstellar_pong.h"
+#include "page_loader.h"
 #include "player.h"
+#include "terminal.h"
+#include "utils.h"
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------------- MACROS --------------------------------------------- //
 
 #define COMMAND_EQ(command, ch, CH, word, WORD) (STR_EQ(command, ch) || STR_EQ(command, CH) || STR_EQ(command, word) || STR_EQ(command, WORD))
 #define GAME_WIDTH 80
 #define PLAYERS_DATA_PATH "players.data"
 
-// --------------------------------------------------------------------------------------------- //
-
-// ---------------------------------------- GLOBAL VARIABLES ----------------------------------- //
-
-/**
- * @brief This global variable is read by load_choose_player_page() & find_page().
- *        The value is being changed only in find_page() - when the user views the page while selecting a player,
- *        the player pages are loaded sequentially and the index of the currently viewed page must be saved.
- */
-//int gl_curr_players_page_index = 0;
-
-/**
- * @brief This global variable is read by find_page().
- *        The value is set and changed only by choose_pregame_page() which is a function that runs with the load_main_page or
- *        load_after_game_page to retrieve player data from a file. In doing so it sets/updates the number of players
- *        in the file (some may have been added). This means that the number in the variable will always be up to date,
- *        cases of changing the file externally are undefined behavior and thus not checked.
- */
-//int gl_players_count = 0;
-
-/**
- * @brief This global variable is read/set/updated/freed by find_page(), check_name(), is_name_unique() and load_create_new_player_page().
- *        Its job is to hold the current value of the name when creating a new player. The name must be checked for validity and uniqueness.
- *        If it is ok, it does not mean it will be used and can possibly be freed when leaving the page or replacing it with another name.
- *        Ultimately it should be stored within the player structure and released.
- */
-//char *gl_curr_player_name = NULL;
-
-/**
- * @brief This global variable is read and set in find_page() and load_create_new_player_page().
- *        Used in the load_create_new_player_page() function for proper terminal setup.
- *        If the user enters a name when creating a new player and validity/uniqueness is checked, the answer to these two tests
- *        is passed to the user through the terminal. And to let the function know that it only needs to show this message once,
- *        this flag is used. 
- */
-//bool gl_curr_player_name_seen_flag = false;
-
-/**
- * @brief This global variable is set in find_page() and freed in load_game().
- *        It is used to pass the player struct between pages.
- */
-//player_t *gl_player_choosen_to_game = NULL;
-
 // ---------------------------------------- STATIC DECLARATIONS--------------------------------- //
 
+static page_return_code_t load_error_page(px_t height, px_t width);
+static page_return_code_t load_about_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
+static page_return_code_t load_not_found_page(px_t height, px_t width);
+static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data);
 static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
-static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
+static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
-static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data);
-static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
-
-static page_return_code_t load_not_found_page(px_t height, px_t width);
-static page_return_code_t load_error_page(px_t height, px_t width);
+static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 
 static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
-static players_array_t *load_players(const char* file_path);
-static page_t choose_pregame_page(page_loader_inner_data_t *data);
-static player_t *find_player(const char *name, const char *file_path);
-static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
-static bool check_name(const char *name, page_loader_inner_data_t *data);
-static page_t handle_save_and_play(page_loader_inner_data_t *data);
-static int write_player_to_file(player_t *player, const char *file_path);
-static char *create_string(const char *format, ...);
-static char *create_player_string(player_t *player, bool end_with_newline);
-static int update_players_stats(player_t *target_player, const char *file_path);
-static void display_live_stats(game_t *game);
-static void display_resources(player_t *player, int width);
-static void display_hearts(const char *player_name, int number_of_hearts);
-
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
+static int update_players_stats(player_t *target_player, const char *file_path);
+static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
+static char *create_player_string(player_t *player, bool end_with_newline);
+static void display_hearts(const char *player_name, int number_of_hearts);
+static int write_player_to_file(player_t *player, const char *file_path);
+static bool check_name(const char *name, page_loader_inner_data_t *data);
+static player_t *find_player(const char *name, const char *file_path);
+static page_t handle_save_and_play(page_loader_inner_data_t *data);
+static page_t choose_pregame_page(page_loader_inner_data_t *data);
+static players_array_t *load_players(const char* file_path);
+static void display_resources(player_t *player, int width);
 static void put_game_logo(px_t width, position_t position);
+static char *create_string(const char *format, ...);
+static void display_live_stats(game_t *game);
 
-// --------------------------------------------------------------------------------------------- //
+// ----------------------------------------- PROGRAM-------------------------------------------- //
 
 page_t find_page(page_t current_page, const char *command, page_loader_inner_data_t *data)
 {
@@ -107,6 +63,14 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
             return ABOUT_PAGE;
         } else if (COMMAND_EQ(command, "p", "P", "play", "PLAY")) {
             return choose_pregame_page(data);
+        }
+        return NO_PAGE;
+    // ----------------------------------------------------------------------------------------- //
+    case ABOUT_PAGE:
+        if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
+            return QUIT_WITHOUT_CONFIRMATION_PAGE;
+        } else if (COMMAND_EQ(command, "b", "B", "back", "BACK")) {
+            return MAIN_PAGE;
         }
         return NO_PAGE;
     // ----------------------------------------------------------------------------------------- //
@@ -160,7 +124,7 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
             }
             return CHOOSE_PLAYER_PAGE;
         } else {
-            if((data->player_choosen_to_game = find_player(command, PLAYERS_DATA_PATH)) != NULL) {
+            if ((data->player_choosen_to_game = find_player(command, PLAYERS_DATA_PATH)) != NULL) {
                 return GAME_PAGE;
             }
         }
@@ -223,6 +187,8 @@ page_return_code_t load_page(page_t page, px_t height, px_t width, page_loader_i
     {
     case MAIN_PAGE:
         return load_main_page(height, width, data, terminal_data);
+    case ABOUT_PAGE:
+        return load_about_page(height, width, data, terminal_data);
     case QUIT_WITHOUT_CONFIRMATION_PAGE:
         return ERROR;
     case GAME_PAGE:
@@ -263,17 +229,42 @@ const char *convert_page_2_string(page_t page)
     case BACK_PAGE: return "Back page";
     case AFTER_GAME_PAGE: return "After Game page";
     case ERROR_PAGE: return "Error page";
+    case QUIT_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE: return "Quit With Confirmation From Create New Player page page";
+    case BACK_WITH_CONFIRMATION_FROM_CREATE_NEW_PLAYER_PAGE_PAGE: return "Back With Confirmation From Create New Player page page";
     default:
         break;
     }
 }
 
+page_loader_inner_data_t *create_page_loader_inner_data()
+{
+    page_loader_inner_data_t *data = malloc(sizeof(page_loader_inner_data_t));
+    if (data == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    data->curr_player_name_seen_flag = false; data->curr_players_page_index = 0; data->players_count = 0;
+    data->terminal_signal = false; data->curr_player_name = NULL; data->player_choosen_to_game = NULL;
+
+    return data;
+}
+
+void release_page_loader_inner_data(page_loader_inner_data_t *data)
+{
+    if (data != NULL) {
+        free(data);
+    }
+}
+
 /**
- * @brief 
- * 
- * @param display_terminal 
- * @note Minimal height of main page is 12 pixels.
- * @return int 
+ * @brief Loads the main page content onto the terminal screen.
+ *
+ * @param height The height of the terminal window.
+ * @param width The width of the terminal window.
+ * @param data Page loader inner data structure.
+ * @param terminal_data Terminal data structure for rendering.
+ * @return The return code indicating success or error.
  */
 static page_return_code_t load_main_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
@@ -293,9 +284,57 @@ static page_return_code_t load_main_page(px_t height, px_t width, page_loader_in
         return ERROR;
     }
 
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * @brief Loads the about page content onto the terminal screen.
+ *
+ * @param height The height of the terminal window.
+ * @param width The width of the terminal window.
+ * @param data Page loader inner data structure.
+ * @param terminal_data Terminal data structure for rendering.
+ * @return The return code indicating success or error.
+ */
+static page_return_code_t load_about_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
+{
+    clear_canvas();
+    draw_borders(height, width);
+    set_cursor_at_beginning_of_canvas();
+
+    put_empty_row(1);
+    put_game_logo(width, CENTER);
+    put_empty_row(1);
+    put_text("Interstellar Pong, set in the vast outer space, is a captivating and modern take on the classic game of Pong.", width, CENTER);
+    put_empty_row(1);
+    put_text("~ How To ~", width, CENTER);
+    put_empty_row(1);
+    put_text("• App is based on the virtual terminal. Enter commands as their full name or their shortcuts", width, CENTER);
+    put_text("• In the game itself, use the \"W\" key to move up, the \"S\" key to move down and \"Q\" to quit the game.", width, CENTER);
+    put_empty_row(1);
+    
+    put_text("BACK [B]", width, CENTER);
+    put_text("QUIT [Q]", width, CENTER);
+    put_empty_row(1);
+
+    if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
+        return ERROR;
+    }
+
+    return SUCCESS;
+}
+
+/**
+ * @brief Loads a confirmation page for quitting or going back.
+ *
+ * This function displays a confirmation page with options to leave unsaved work.
+ *
+ * @param height The height of the canvas.
+ * @param width The width of the canvas.
+ * @param data Pointer to page_loader_inner_data_t structure.
+ * @param terminal_data Pointer to terminal_data_t structure.
+ * @return Page return code indicating the result of loading the page.
+ */
 static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
@@ -314,9 +353,18 @@ static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t 
         return ERROR;
     }
 
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * @brief Loads a "page not found" page.
+ *
+ * This function displays a page indicating that the requested page was not found.
+ *
+ * @param height The height of the canvas.
+ * @param width The width of the canvas.
+ * @return Page return code indicating the result of loading the page.
+ */
 static page_return_code_t load_not_found_page(px_t height, px_t width)
 {
     clear_canvas();
@@ -332,6 +380,15 @@ static page_return_code_t load_not_found_page(px_t height, px_t width)
     return ERROR;
 }
 
+/**
+ * @brief Loads an error page.
+ *
+ * This function displays a page indicating that an error has occurred.
+ *
+ * @param height The height of the canvas.
+ * @param width The width of the canvas.
+ * @return Page return code indicating the result of loading the page.
+ */
 static page_return_code_t load_error_page(px_t height, px_t width)
 {
     clear_canvas();
@@ -348,6 +405,15 @@ static page_return_code_t load_error_page(px_t height, px_t width)
     return ERROR;
 }
 
+/**
+ * @brief Loads players' data from a file.
+ *
+ * This function loads player data from a file and returns it as a players_array_t structure.
+ *
+ * @param file_path The path to the file containing players' data.
+ * @return Pointer to a players_array_t structure containing loaded player data.
+ * @retval NULL if there was an error.
+ */
 static players_array_t *load_players(const char* file_path)
 {
     players_array_t *players = create_players_array();
@@ -397,6 +463,15 @@ static players_array_t *load_players(const char* file_path)
     return players;
 }
 
+/**
+ * @brief Creates a formatted player string.
+ *
+ * This function creates a formatted string from a player's data.
+ *
+ * @param player Pointer to a player_t structure.
+ * @param end_with_newline Indicates whether the string should end with a newline character.
+ * @return Pointer to the created formatted string.
+ */
 static char *create_player_string(player_t *player, bool end_with_newline)
 {
     char *string;
@@ -413,6 +488,15 @@ static char *create_player_string(player_t *player, bool end_with_newline)
     return string;
 }
 
+/**
+ * @brief Writes a player's data to a file.
+ *
+ * This function writes a player's data to a file.
+ *
+ * @param player Pointer to a player_t structure.
+ * @param file_path The path to the file where the data will be written.
+ * @return 0 on success, -1 on error.
+ */
 static int write_player_to_file(player_t *player, const char *file_path)
 {
     FILE* file = fopen(file_path, "a");
@@ -433,6 +517,14 @@ static int write_player_to_file(player_t *player, const char *file_path)
     return 0;
 }
 
+/**
+ * @brief Chooses the appropriate pregame page based on the presence of saved players.
+ *
+ * This function determines whether to show the choose player page or create new player page.
+ *
+ * @param data Pointer to page_loader_inner_data_t structure.
+ * @return The chosen page.
+ */
 static page_t choose_pregame_page(page_loader_inner_data_t *data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
@@ -451,6 +543,15 @@ static page_t choose_pregame_page(page_loader_inner_data_t *data)
     }
 }
 
+/**
+ * @brief Finds a player by name in the given file.
+ *
+ * This function searches for a player by name in a file and returns a copy of the player data.
+ *
+ * @param name The name of the player to find.
+ * @param file_path The path to the file containing players' data.
+ * @return Pointer to a copied player_t structure if found, NULL otherwise.
+ */
 static player_t *find_player(const char *name, const char *file_path)
 {
     players_array_t *players = load_players(file_path);
@@ -483,14 +584,16 @@ static player_t *find_player(const char *name, const char *file_path)
 }
 
 /**
- * @brief 
- * 
- * @param width 
- * @param button_width 
- * @param button_height 
- * @param player 
- * @param last 
- * @param row_margin
+ * @brief Displays a player button on the screen.
+ *
+ * This function displays a player button with their name and level.
+ *
+ * @param width The width of the canvas.
+ * @param button_width The width of the button (at least 21 px_t).
+ * @param button_height The height of the button.
+ * @param player Pointer to a player_t structure.
+ * @param last Indicates if this is the last button in the row.
+ * @param row_margin Margin for positioning the button.
  * 
  * @warning Minimal <button_width> value is 21 px_t. This value is set to the length of warning string used if the player's name is too long!
  */
@@ -510,6 +613,17 @@ static void put_player(px_t width, px_t button_width, px_t button_height, player
     put_button(width, button_width, button_height, result, CENTER, last, row_margin);
 }
 
+/**
+ * @brief Loads the "choose player" page.
+ *
+ * This function displays the "choose player" page with player selection options.
+ *
+ * @param height The height of the canvas.
+ * @param width The width of the canvas.
+ * @param data Pointer to page_loader_inner_data_t structure.
+ * @param terminal_data Pointer to terminal_data_t structure.
+ * @return Page return code indicating the result of loading the page.
+ */
 static page_return_code_t load_choose_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
@@ -551,9 +665,18 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, page_
         return ERROR;
     }
     
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * Loads the pre-create new player page, displaying information for creating a new player or going back to the main menu.
+ * 
+ * @param height The height of the display.
+ * @param width The width of the display.
+ * @param data Inner data structure for page loading.
+ * @param terminal_data Terminal data for rendering.
+ * @return The page return code indicating the outcome of the loading process.
+ */
 static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
@@ -574,9 +697,15 @@ static page_return_code_t load_pre_create_new_player_page(px_t height, px_t widt
         return ERROR;
     }
     
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * Handles saving the created player and transitioning to the game page.
+ * 
+ * @param data Inner data structure for page loading.
+ * @return The page to transition to based on the handling outcome.
+ */
 static page_t handle_save_and_play(page_loader_inner_data_t *data)
 {
     if (data->curr_player_name == NULL) {
@@ -602,6 +731,13 @@ static page_t handle_save_and_play(page_loader_inner_data_t *data)
     return GAME_PAGE;
 }
 
+/**
+ * Checks the validity of the entered player name and stores it in the data structure.
+ * 
+ * @param name The name to check.
+ * @param data Inner data structure for page loading.
+ * @return Returns true if the name is valid and stored successfully, otherwise false.
+ */
 static bool check_name(const char *name, page_loader_inner_data_t *data)
 {
     if (name != NULL) {
@@ -625,6 +761,13 @@ static bool check_name(const char *name, page_loader_inner_data_t *data)
     return true;
 }
 
+/**
+ * Checks if the entered player name is unique among existing players.
+ * 
+ * @param name The name to check for uniqueness.
+ * @param data Inner data structure for page loading.
+ * @return Returns true if the name is unique, otherwise false.
+ */
 static bool is_name_unique(const char *name, page_loader_inner_data_t *data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
@@ -646,6 +789,15 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data)
     return true;
 }
 
+/**
+ * Loads the create new player page, allowing the user to enter a new player name and validating its uniqueness.
+ * 
+ * @param height The height of the display.
+ * @param width The width of the display.
+ * @param data Inner data structure for page loading.
+ * @param terminal_data Terminal data for rendering.
+ * @return The page return code indicating the outcome of the loading process.
+ */
 static page_return_code_t load_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
@@ -685,16 +837,23 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
             return ERROR;
         }
         data->curr_player_name_seen_flag = true;
-        return SUCCES;
+        return SUCCESS;
     }
 
     if (render_terminal(terminal_data, width, false, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * Creates a formatted string using a variable argument list.
+ * 
+ * @param format The format string.
+ * @param ... Variable arguments to format.
+ * @return The formatted string, or NULL in case of memory allocation failure.
+ */
 static char *create_string(const char *format, ...)
 {
     va_list args, args_copy;
@@ -717,6 +876,14 @@ static char *create_string(const char *format, ...)
     return string;
 }
 
+/**
+ * Handles the display of statistics when no player is available for the game.
+ * 
+ * @param width The width of the display.
+ * @param data Inner data structure for page loading.
+ * @param terminal_data Terminal data for rendering.
+ * @return The page return code indicating the outcome of the loading process.
+ */
 static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     put_empty_row(1);
@@ -730,9 +897,18 @@ static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inn
         return ERROR;
     }
     
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * Loads the after-game page, displaying game statistics for the player.
+ * 
+ * @param height The height of the display.
+ * @param width The width of the display.
+ * @param data Inner data structure for page loading.
+ * @param terminal_data Terminal data for rendering.
+ * @return The page return code indicating the outcome of the loading process.
+ */
 static page_return_code_t load_after_game_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
 {
     clear_canvas();
@@ -800,24 +976,33 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
     
-    return SUCCES;
+    return SUCCESS;
 }
 
+/**
+ * Initializes a file descriptor monitor for non-blocking input readiness check.
+ * 
+ * @return The result of the select function for checking input readiness.
+ */
 static int init_file_descriptor_monitor()
 {
-    // setup the file descriptor set for select
     fd_set read_fds;
     FD_ZERO(&read_fds);
-    FD_SET(STDIN_FILENO, &read_fds); // add standard input to the set
+    FD_SET(STDIN_FILENO, &read_fds);
 
-    // set the timeout for select as non-blocking behavior
     struct timeval timeout;
     timeout.tv_sec = 0; timeout.tv_usec = 0;
 
-    // call select to check for input readiness
     return select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
 }
 
+/**
+ * Updates the statistics of a target player in a specified file.
+ * 
+ * @param target_player The player whose statistics need to be updated.
+ * @param file_path The path of the file containing player data.
+ * @return 0 if the update is successful, or -1 in case of errors.
+ */
 static int update_players_stats(player_t *target_player, const char *file_path)
 {
     if (access(file_path, F_OK) != 0) {
@@ -899,6 +1084,12 @@ static int update_players_stats(player_t *target_player, const char *file_path)
     return 0;
 }
 
+/**
+ * Displays hearts with a specified player name and number of hearts.
+ * 
+ * @param player_name The name of the player.
+ * @param number_of_hearts The number of hearts to display.
+ */
 static void display_hearts(const char *player_name, int number_of_hearts)
 {
     write_text("%s hearts (%d/3): ", player_name, number_of_hearts);
@@ -910,12 +1101,23 @@ static void display_hearts(const char *player_name, int number_of_hearts)
     }
 }
 
+/**
+ * Displays resource information for a player.
+ * 
+ * @param player The player whose resources to display.
+ * @param width The width of the display.
+ */
 static void display_resources(player_t *player, int width)
 {
     put_text("Resources:", width, CENTER);
     write_text("\t\t   STONE (%d/?) IRON(%d/?) COPPER(%d/?) GOLD(%d/?) ", player->stone, player->iron, player->copper, player->gold);
 }
 
+/**
+ * Displays live game statistics including hearts and resources.
+ * 
+ * @param game The game data containing player and enemy information.
+ */
 static void display_live_stats(game_t *game)
 {
     write_text("\n");
@@ -925,6 +1127,14 @@ static void display_live_stats(game_t *game)
     display_resources(game->player, game->width);
 }
 
+/**
+ * Loads the game page and handles the game loop.
+ * 
+ * @param height The height of the display.
+ * @param width The width of the display.
+ * @param data Inner data structure for page loading.
+ * @return The page return code indicating the outcome of the loading process.
+ */
 static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_data_t *data)
 {
     game_t *game = init_game(data->player_choosen_to_game, height, width);
@@ -994,6 +1204,12 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
     return SUCCESS_GAME;
 }
 
+/**
+ * Displays the game logo in ASCII art format.
+ * 
+ * @param width The width of the display.
+ * @param position The position to display the logo.
+ */
 static void put_game_logo(px_t width, position_t position)
 {
     put_text(".___        __                _________ __         .__  .__                 __________                      ", width, position);
@@ -1002,25 +1218,4 @@ static void put_game_logo(px_t width, position_t position)
     put_text("|   |   |  \\  | \\  ___/|  | \\/        \\|  | \\  ___/|  |_|  |__/ __ \\|  | \\/  |    |  (  <_> )   |  \\/ /_/  >", width, position);
     put_text("|___|___|  /__|  \\___  >__| /_______  /|__|  \\___  >____/____(____  /__|     |____|   \\____/|___|  /\\___  / ", width, position);
     put_text("         \\/          \\/             \\/           \\/               \\/                             \\//_____/  ", width, position);
-}
-
-page_loader_inner_data_t *create_page_loader_inner_data()
-{
-    page_loader_inner_data_t *data = malloc(sizeof(page_loader_inner_data_t));
-    if (data == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
-        return NULL;
-    }
-
-    data->curr_player_name_seen_flag = false; data->curr_players_page_index = 0; data->players_count = 0;
-    data->terminal_signal = false; data->curr_player_name = NULL; data->player_choosen_to_game = NULL;
-
-    return data;
-}
-
-void release_page_loader_inner_data(page_loader_inner_data_t *data)
-{
-    if (data != NULL) {
-        free(data);
-    }
 }

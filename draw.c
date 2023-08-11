@@ -1,33 +1,46 @@
 #include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "draw.h"
 #include "errors.h"
+#include "draw.h"
 #include "utils.h"
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------------- MACROS --------------------------------------------- //
 
 #define CURSOR_TO_BEGINNING_OF_LINE() printf("\r")
 #define CHAR_RIGHT() printf("\033[C")
+#define CHAR_LEFT() printf("\033[D")
 #define ROW_DOWN() printf("\033[B")
 #define ROW_UP() printf("\033[A")
 
-// --------------------------------------------------------------------------------------------- //
+// ------------------------------------ GLOBAL VARIABLE----------------------------------------- //
 
-static unsigned char ID = 0;
+/**
+ * @brief Global ID allocator for scene objects.
+ *
+ * The `gl_ID_allocater` is a global variable used to assign unique IDs to objects
+ * added to the scene. It ensures that each object has a distinct identifier within
+ * the scene. The IDs are allocated sequentially as objects are added to the scene.
+ * This variable is used for tracking and managing scene objects.
+ *
+ * Note that the range of available IDs is limited by the range of an unsigned char.
+ * Once the maximum ID value is reached, the allocator will wrap around and start
+ * reusing IDs.
+ */
+static ID_t gl_ID_allocater = 0;
 
-// --------------------------------------------------------------------------------------------- //
+// ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static void display_button(px_t width, px_t height, px_t padding, const char *text);
 static void display_button_text(px_t width, const char *text);
-static ID_t generate_id();
 static colour_t ID_to_colour(scene_t *scene, ID_t ID);
+static ID_t generate_id();
 
-// --------------------------------------------------------------------------------------------- //
+// ----------------------------------------- PROGRAM-------------------------------------------- //
 
 void clear_canvas(void)
 {
@@ -90,29 +103,26 @@ void put_text(const char* text, px_t line_width, position_t pos)
     {
     case LEFT:
         CHAR_RIGHT();
-        printf("%s", text);
         break;
-
     case CENTER:
         CHAR_RIGHT();
         px_t center_padding = (line_width - text_length) / 2;
         for (int i = 0; i < center_padding; i++) {
             putchar(' ');
         }
-        printf("%s", text);
         break;
-
     case RIGHT:
         CHAR_RIGHT();
         px_t right_padding = (line_width - text_length);
         for (int i = 0; i < right_padding - 1; i++) {
             putchar(' ');
         }
-        printf("%s", text);
         break;
     default:
         break;
     }
+
+    printf("%s", text);
     CURSOR_TO_BEGINNING_OF_LINE();
     ROW_DOWN();
 }
@@ -157,72 +167,6 @@ void put_button(px_t width, px_t button_width, px_t button_height, const char *t
     }
 }
 
-static void display_button(px_t width, px_t height, px_t padding, const char *text)
-{
-    CURSOR_TO_BEGINNING_OF_LINE();
-    CHAR_RIGHT();
-
-    for (int i = 0; i < padding; ++i) {
-        CHAR_RIGHT();
-    }
-
-    printf("┌");
-    for (int i = 0; i < width - 2; ++i) {
-        printf("─");
-    }
-    printf("┐\n");
-
-    for (int i = 0; i < height - 2; ++i) {
-        CHAR_RIGHT();
-        for (int i = 0; i < padding; ++i) {
-            CHAR_RIGHT();
-        }
-        printf("│");
-
-        if (i == (height - 2) / 2) {
-            display_button_text(width, text);
-        } else {
-            for (int j = 0; j < width - 2; ++j) {
-                printf(" ");
-            }
-        }
-        printf("│\n");
-    }
-
-    CHAR_RIGHT();
-    for (int i = 0; i < padding; ++i) {
-        CHAR_RIGHT();
-    }
-
-    printf("└");
-    for (int i = 0; i < width - 2; ++i) {
-        printf("─");
-    }
-    printf("┘");
-}
-
-static void display_button_text(px_t width, const char *text)
-{
-    int text_length_equalizer = 0;
-
-    if (strlen(text) % 2 != 0) {
-        text_length_equalizer--;
-    }
-    if (width % 2 != 0) {
-        text_length_equalizer--;
-    }
-
-    for (int j = 0; j < (width - 1) / 2 - (strlen(text) / 2); ++j) {
-        printf(" ");
-    }
-
-    printf("%s", text);
-
-    for (int j = 0; j < (width - 1) / 2 - (strlen(text) / 2) + text_length_equalizer; ++j) {
-        printf(" ");
-    }
-}
-
 void put_empty_row(unsigned int rows_count)
 {
     for (unsigned int i = 0; i < rows_count; ++i) {
@@ -262,13 +206,14 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
 
 scene_t *create_scene()
 {
+    const int BEGIN_ARRAY_SIZE = 4;
     scene_t *scene = malloc(sizeof(scene_t));
     if (scene == NULL) {
         return NULL;
     }
 
     scene->number_of_objects = 0;
-    scene->length_of_arr = 4;
+    scene->length_of_arr = BEGIN_ARRAY_SIZE;
     scene->scene = malloc(sizeof(rectangle_t*) * scene->length_of_arr);
 
     if (scene->scene == NULL) {
@@ -279,7 +224,8 @@ scene_t *create_scene()
     return scene;
 }
 
-void release_scene(scene_t *scene) {
+void release_scene(scene_t *scene)
+{
 
     if (scene == NULL) {
         return;
@@ -293,14 +239,16 @@ void release_scene(scene_t *scene) {
     free(scene);
 }
 
-rectangle_t *add_to_scene(scene_t *scene, rectangle_t *object) {
+rectangle_t *add_to_scene(scene_t *scene, rectangle_t *object)
+{
+    const int GROWTH_FACTOR = 2;
 
     if (scene == NULL || object == NULL) {
         return NULL;
     }
 
     if (scene->number_of_objects >= scene->length_of_arr) {
-        scene->length_of_arr *= 2;
+        scene->length_of_arr *= GROWTH_FACTOR;
         rectangle_t **new_scene_arr = realloc(scene->scene, sizeof(rectangle_t*) * scene->length_of_arr);
         if (new_scene_arr == NULL) {
             return NULL;
@@ -413,7 +361,8 @@ ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *
 
     for (px_t i = object->position_y; i < object->position_y + object->side_length_2; ++i) {
         for (px_t j = object->position_x; j < object->position_x + object->side_length_1; ++j) {
-            if((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
+
+            if ((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
                 if (pixel_buffer->buff[i * pixel_buffer->width + j] != UNDEFINIED_ID) {
                     return pixel_buffer->buff[i * pixel_buffer->width + j];
                 } else {
@@ -491,11 +440,103 @@ const char* colour_2_string(colour_t colour)
     }
 }
 
-unsigned char generate_id()
+/**
+ * @brief Displays a button with specified dimensions and text.
+ * 
+ * @param width The width of the button.
+ * @param height The height of the button.
+ * @param padding The padding around the button.
+ * @param text The text displayed on the button.
+ */
+static void display_button(px_t width, px_t height, px_t padding, const char *text)
 {
-    return ++ID;
+    CURSOR_TO_BEGINNING_OF_LINE();
+    CHAR_RIGHT();
+
+    for (int i = 0; i < padding; ++i) {
+        CHAR_RIGHT();
+    }
+
+    printf("┌");
+    for (int i = 0; i < width - 2; ++i) {
+        printf("─");
+    }
+    printf("┐\n");
+
+    for (int i = 0; i < height - 2; ++i) {
+        CHAR_RIGHT();
+        for (int i = 0; i < padding; ++i) {
+            CHAR_RIGHT();
+        }
+        printf("│");
+
+        if (i == (height - 2) / 2) {
+            display_button_text(width, text);
+        } else {
+            for (int j = 0; j < width - 2; ++j) {
+                printf(" ");
+            }
+        }
+        printf("│\n");
+    }
+
+    CHAR_RIGHT();
+    for (int i = 0; i < padding; ++i) {
+        CHAR_RIGHT();
+    }
+
+    printf("└");
+    for (int i = 0; i < width - 2; ++i) {
+        printf("─");
+    }
+    printf("┘");
 }
 
+/**
+ * @brief Displays the text content inside a button.
+ * 
+ * @param width The width of the button.
+ * @param text The text to be displayed inside the button.
+ */
+static void display_button_text(px_t width, const char *text)
+{
+    int text_length_equalizer = 0;
+
+    if (strlen(text) % 2 != 0) {
+        text_length_equalizer--;
+    }
+    if (width % 2 != 0) {
+        text_length_equalizer--;
+    }
+
+    for (int j = 0; j < (width - 1) / 2 - (strlen(text) / 2); ++j) {
+        printf(" ");
+    }
+
+    printf("%s", text);
+
+    for (int j = 0; j < (width - 1) / 2 - (strlen(text) / 2) + text_length_equalizer; ++j) {
+        printf(" ");
+    }
+}
+
+/**
+ * @brief Generates a unique ID for objects in the scene.
+ * 
+ * @return The generated unique ID.
+ */
+static ID_t generate_id()
+{
+    return ++gl_ID_allocater;
+}
+
+/**
+ * @brief Maps an ID to a colour for rendering.
+ * 
+ * @param scene The scene containing objects.
+ * @param ID The ID to map to a colour.
+ * @return The colour corresponding to the given ID.
+ */
 static colour_t ID_to_colour(scene_t *scene, ID_t ID)
 {
     for (int i = 0; i < scene->number_of_objects; ++i) {
