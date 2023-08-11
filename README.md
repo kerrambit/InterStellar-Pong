@@ -1,10 +1,3 @@
-   .___        __                _________ __         .__  .__                 __________                      
-  |   | _____/  |_  ___________/   _____//  |_  ____ |  | |  | _____ _______  \______   \____   ____    ____   
-  |   |/    \   __\/ __ \_  __ \_____  \\   __\/ __ \|  | |  | \__  \\_  __ \  |     ___/  _ \ /    \  / ___\  
-  |   |   |  \  | \  ___/|  | \/        \|  | \  ___/|  |_|  |__/ __ \|  | \/  |    |  (  <_> )   |  \/ /_/  > 
-  |___|___|  /__|  \___  >__| /_______  /|__|  \___  >____/____(____  /__|     |____|   \____/|___|  /\___  /  
-           \/          \/             \/           \/               \/                             \//_____/ 
-
 # InterStellar Pong - Beta Version 0.1
 
 Welcome to InterStellar Pong, a simple terminal-based game inspired by the classic Pong with an exciting twist!
@@ -21,7 +14,6 @@ In this game, you'll not only play Pong but also collect valuable resources like
 
 To play InterStellar Pong, follow these steps:
 
-1. Clone the repository:
    ```bash
    git clone https://github.com/your-username/interstellar-pong.git
    cd interstellar-pong
