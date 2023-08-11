@@ -1,4 +1,4 @@
-# InterStellar Pong - Beta Version 0.1
+# InterStellar Pong - v1.0.0-beta 
 
 Welcome to InterStellar Pong, a simple terminal-based game inspired by the classic Pong with an exciting twist!
 In this game, you'll not only play Pong but also collect valuable resources like stone, iron, copper, and gold to progress through higher levels.
