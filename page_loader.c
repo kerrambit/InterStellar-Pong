@@ -54,7 +54,7 @@ static void display_live_stats(game_t *game);
 
 page_t find_page(page_t current_page, const char *command, page_loader_inner_data_t *data)
 {
-    switch (current_page)
+    switch (current_page) 
     {
     case MAIN_PAGE:
         if (COMMAND_EQ(command, "q", "Q", "quit", "QUIT")) {
