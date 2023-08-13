@@ -19,7 +19,7 @@ In this game, you'll not only play Pong but also collect valuable resources like
 - Clone the repository:
 
    ```bash
-   git clone https://github.com/kerrambit/InterStellar-Pong && cd interstellar-pong
+   git clone https://github.com/kerrambit/InterStellar-Pong && cd InterStellar-Pong
 
 - Compile (the compilation is guaranteed to run without problems for at least version gcc-11):
 
