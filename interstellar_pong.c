@@ -56,7 +56,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     } 
 
     if (player == NULL) {
-        game->player = create_player("-", 0, 0, 0, 0, 0);
+        game->player = create_player(";", 0, 0, 0, 0, 0);
     } else {
         game->player = create_player(player->name, player->level, player->stone, player->copper, player->iron, player->gold);
     }

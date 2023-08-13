@@ -999,12 +999,18 @@ static int init_file_descriptor_monitor()
 /**
  * Updates the statistics of a target player in a specified file.
  * 
- * @param target_player The player whose statistics need to be updated.
+ * @param target_player The player whose statistics need to be updated. The player with name ";" is special mark to
+ *                      show that the player was created only temporarily (game without player account), and thus does not need to be updated.
+ *                      Function update_players_stats() is able to detect that and to handle the situation.
  * @param file_path The path of the file containing player data.
  * @return 0 if the update is successful, or -1 in case of errors.
  */
 static int update_players_stats(player_t *target_player, const char *file_path)
 {
+    if (STR_EQ(target_player->name, ";")) {
+        return 0;
+    }
+
     if (access(file_path, F_OK) != 0) {
         resolve_error(MISSING_DATA_FILE);
         return -1;
