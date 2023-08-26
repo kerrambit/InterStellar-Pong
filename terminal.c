@@ -12,6 +12,7 @@
 
 #define TERMINAL_FILE_PATH "user_input.data"
 #define BACKSPACE 127
+#define ESCPAPE 27
 #define NEWLINE '\n'
 
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
@@ -20,6 +21,8 @@ static char* get_last_line(terminal_data_t *terminal_data, int buffer_size);
 static int get_maximal_terminal_buffer_size(terminal_data_t *terminal_data);
 static int parse_newline(terminal_data_t *terminal_data, char **command);
 static int parse_backspace(terminal_data_t *terminal_data, FILE *file);
+static bool check_character(char c);
+static void skip_arrow_seq();
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
 
@@ -83,8 +86,47 @@ int close_terminal(terminal_data_t *terminal_data)
     return 0;
 }
 
+/**
+ * @brief Checks if a character falls within a valid range for input handling.
+ *
+ * Valid characters include normal printable characters, newline, and
+ * backspace. It also handles the case of arrow keys by skipping their sequence if detected.
+ * 
+ * @param c The character to be checked.
+ * @return Returns true if the character is within the valid range, otherwise false.
+ */
+static bool check_character(char c)
+{
+    if (c == BACKSPACE || c == NEWLINE || (c >= 32 && c <= 126)) {
+        return true;
+    }
+
+    if (c == ESCPAPE)
+    {
+        skip_arrow_seq();
+    }
+    return false;
+}
+
+/**
+ * @brief Skips an escape sequence representing arrow keys in the terminal input.
+ * 
+ * When arrow keys are pressed in the terminal, they are often represented as escape sequences
+ * consisting of the escape character followed by other characters. This function reads and
+ * discards the next two characters from the terminal input, effectively skipping the escape sequence.
+ */
+static void skip_arrow_seq()
+{
+    (void)getchar();
+    (void)getchar();
+}
+
 int process_command(terminal_data_t *terminal_data, char c, char **command)
 {
+    if (!check_character(c)) {
+        return 0;
+    }
+
     if (!terminal_data->is_terminal_enabled) {
         resolve_error(INACTIVE_TERMINAL);
         return -1;
