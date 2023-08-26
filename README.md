@@ -1,4 +1,4 @@
-# InterStellar Pong - v1.0.1-beta 
+# InterStellar Pong - v1.1.0-beta 
 
 Welcome to InterStellar Pong, a simple terminal-based game inspired by the classic Pong with an exciting twist!
 In this game, you'll not only play Pong but also collect valuable resources like stone, iron, copper, and gold to progress through higher levels.
@@ -35,3 +35,7 @@ In this game, you'll not only play Pong but also collect valuable resources like
 - **v1.0.0-beta**
   - Fixed: Issue with game crashing after the user runs the game for the first time and chosses to play without creating player (error log: "[ERROR] - [Application Error]: file with data was not found.").
   - Description: The game was crashing due to the fact, that program tried to update data in players.data file, however, such a file did not exist at the moment.
+
+## Version History
+- **v1.1.0-beta**
+  - This version introduces enhancements to the enemy paddle movement, resulting in smoother gameplay. Additionally, the game's difficulty has been adjusted to make it more beatable, as the enemy's strategy is no longer optimized. Another improvement involves the heart loss mechanism; when a heart is lost, the positions of the player, enemy, and ball are reset to their initial states, and the game is briefly paused. This release also addresses a bug related to pressing the Arrow Up/Down keys.
