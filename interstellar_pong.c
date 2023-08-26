@@ -2,6 +2,15 @@
 
 #include "interstellar_pong.h"
 
+// ---------------------------------------- MACROS --------------------------------------------- //
+
+#define BALL_INIT_X_COORD 37
+#define BALL_INIT_Y_COORD 8
+#define PLAYER_INIT_X_COORD (game->width - 5)
+#define PLAYER_INIT_Y_COORD 5
+#define ENEMY_INIT_X_COORD 5
+#define ENEMY_INIT_Y_COORD 5
+
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
@@ -12,6 +21,7 @@ static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game);
 static bool detect_collision(ID_t collision_ID, rectangle_t *object);
 static void bounce_ball(rectangle_t *ball, px_t width, px_t height);
 static rectangle_t *find_object(game_t *game, const char *name);
+static void set_objects_to_initial_position(game_t *game);
 static void move_ball(rectangle_t *ball);
 
 static int get_width(game_t *game);
@@ -45,7 +55,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
 
     game->height = height;
     game->width = width;
-    game->game_state = STOPPED;
+    game->game_state = TERMINATED;
     game->scene = NULL;
     game->game_ticks = 0;
     game->enemy = create_player("enemy", 0, 0, 0, 0, 0);
@@ -84,6 +94,11 @@ game_state_t get_game_state(game_t *game)
 
 void end_game(game_t *game)
 {
+    game->game_state = TERMINATED;
+}
+
+void stop_game(game_t *game)
+{
     game->game_state = STOPPED;
 }
 
@@ -105,11 +120,11 @@ scene_t *init_scene(game_t *game)
         return NULL;
     }
 
-    if (!create_rectangle_and_add_it_to_scene(scene, 37, 8, 1, 1, 2, 1, WHITE, "ball") ||
-        !create_rectangle_and_add_it_to_scene(scene, game->width - 5, 5, 1, 5, 0, 0, GREEN, "player") ||
+    if (!create_rectangle_and_add_it_to_scene(scene, BALL_INIT_X_COORD, BALL_INIT_Y_COORD, 1, 1, 2, 1, WHITE, "ball") ||
+        !create_rectangle_and_add_it_to_scene(scene, PLAYER_INIT_X_COORD, PLAYER_INIT_Y_COORD, 1, 5, 0, 0, GREEN, "player") ||
         !create_rectangle_and_add_it_to_scene(scene, 15, 13, 2, 2, 0, 0, DARK_GRAY, "meteor_1") ||
         !create_rectangle_and_add_it_to_scene(scene, 50, 5, 1, 2, 0, 0, DARK_GRAY, "meteor_2") ||
-        !create_rectangle_and_add_it_to_scene(scene, 5, 5, 1, 5, 0, 0, RED, "enemy")) {
+        !create_rectangle_and_add_it_to_scene(scene, ENEMY_INIT_X_COORD, ENEMY_INIT_Y_COORD, 1, 5, 0, 0, RED, "enemy")) {
         return NULL;
     }
 
@@ -219,14 +234,15 @@ static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball
 {
     int ball_center = get_y_position(ball) + (get_side_length_2(ball) / 2);
     int paddle_center = get_y_position(enemy) + (get_side_length_2(enemy) / 2);
+    int paddle_speed = (abs(ball_center - paddle_center) < 9) ? 1 : 2;
 
     if (ball_center < paddle_center) {
-        set_y_position(enemy, get_y_position(enemy) - 2);
+        set_y_position(enemy, get_y_position(enemy) - paddle_speed);
     } else if (ball_center > paddle_center) {
-        set_y_position(enemy, get_y_position(enemy) + 2);
+        set_y_position(enemy, get_y_position(enemy) + paddle_speed);
     }
 
-    set_y_position(enemy, get_y_position(enemy) + rand() % 3);
+    set_y_position(enemy, get_y_position(enemy) + rand() % 3 - 1);
 
     if (get_y_position(enemy) < 0) {
         set_y_position(enemy, 0);
@@ -293,12 +309,41 @@ static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game)
     if (!is_in_bound) {
         if (get_game_ticks(game) % 2 == 0) {
             game->player->hearts--;
+            set_x_speed(find_object(game, "ball"), 2);
+            game->game_ticks = -1;
         } else {
             game->enemy->hearts--;
+            set_x_speed(find_object(game, "ball"), -2);
+            game->game_ticks = 0;
         }
+        set_objects_to_initial_position(game);
+        game->game_state = STOPPED;
     }
 
     return is_in_bound;
+}
+
+/**
+ * @brief Sets the game objects (ball, player, enemy) to their initial positions and speeds.
+ *
+ * This helper function resets the positions and speeds of the ball, player, and enemy objects
+ * to their initial values defined by constants.
+ *
+ * @param game A pointer to the game structure containing the objects to be reset.
+ */
+static void set_objects_to_initial_position(game_t *game)
+{
+    set_x_position(find_object(game, "ball"), BALL_INIT_X_COORD);
+    set_y_position(find_object(game, "ball"), BALL_INIT_Y_COORD);
+    set_y_speed(find_object(game, "ball"), 1);
+
+    set_x_position(find_object(game, "player"), PLAYER_INIT_X_COORD);
+    set_y_position(find_object(game, "player"), PLAYER_INIT_Y_COORD);
+    set_y_speed(find_object(game, "player"), 0);
+
+    set_x_position(find_object(game, "enemy"), ENEMY_INIT_X_COORD);
+    set_y_position(find_object(game, "enemy"), ENEMY_INIT_Y_COORD);
+    set_y_speed(find_object(game, "enemy"), 0);
 }
 
 /**

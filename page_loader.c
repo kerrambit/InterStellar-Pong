@@ -1175,7 +1175,8 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
     clear_canvas();
     start_game(game);
 
-    while (get_game_state(game) != STOPPED) {
+    bool next_frame_stopped = false;
+    while (get_game_state(game) != TERMINATED) {
 
         draw_borders(height + 1, width);
         set_cursor_at_beginning_of_canvas();
@@ -1195,6 +1196,16 @@ static page_return_code_t load_game(px_t height, px_t width, page_loader_inner_d
 
         display_live_stats(game);
         usleep(70000);
+
+        if (next_frame_stopped) {
+            usleep(1350000);
+            next_frame_stopped = false;
+        }
+
+        if (get_game_state(game) == STOPPED) {
+            next_frame_stopped = true;
+            start_game(game);
+        }
     }
 
     release_pixel_buffer(pixel_buffer1);
