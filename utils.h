@@ -32,4 +32,15 @@ bool convert_string_2_int(const char* str, int* placeholder);
  */
 void strip_newline(char* string);
 
+/**
+ * @brief Removes all leading and trailing whitespace characters from a string.
+ * 
+ * This function removes whitespace characters (such as space, tab, newline, etc.)
+ * from the beginning and end of the input string. The modified string will be
+ * stored in the same memory location as the input string.
+ * 
+ * @param string The input string to be modified.
+ */
+void complete_strip(char* string);
+
 #endif
