@@ -18,7 +18,7 @@
 
 #define COMMAND_EQ(command, ch, CH, word, WORD) (STR_EQ(command, ch) || STR_EQ(command, CH) || STR_EQ(command, word) || STR_EQ(command, WORD))
 #define GAME_WIDTH 80
-#define PLAYERS_DATA_PATH "players.data"
+#define PLAYERS_DATA_PATH "res/players.data"
 
 // ---------------------------------------- STATIC DECLARATIONS--------------------------------- //
 
