@@ -25,7 +25,7 @@
 # of spawning the given material. All materials are ordered as STONE;COPPER;IRON;GOLD.
 
 # LVL1: Stone Age
-10;0;0;0;100,0,0,0
+10;0;0;0;100;0;0;0
 
 # LVL2: Copper Conquest
 10;10;0;0;75;25;0;0
