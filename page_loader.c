@@ -47,7 +47,6 @@ static page_t choose_pregame_page(page_loader_inner_data_t *data);
 static players_array_t *load_players(const char* file_path);
 static void display_resources(player_t *player, int width);
 static void put_game_logo(px_t width, position_t position);
-static char *create_string(const char *format, ...);
 static void display_live_stats(game_t *game);
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
@@ -845,35 +844,6 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
     }
     
     return SUCCESS;
-}
-
-/**
- * Creates a formatted string using a variable argument list.
- * 
- * @param format The format string.
- * @param ... Variable arguments to format.
- * @return The formatted string, or NULL in case of memory allocation failure.
- */
-static char *create_string(const char *format, ...)
-{
-    va_list args, args_copy;
-    va_start(args, format);
-    va_copy(args_copy, args);
-    
-    int size = vsnprintf(NULL, 0, format, args_copy);
-    va_end(args_copy);
-
-    char *string = (char *)malloc(size + 1);
-    if (string == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
-        va_end(args);
-        return NULL;
-    }
-
-    vsnprintf(string, size + 1, format, args);
-    va_end(args);
-
-    return string;
 }
 
 /**

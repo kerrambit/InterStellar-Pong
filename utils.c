@@ -42,3 +42,25 @@ void complete_strip(char* string)
         memmove(string, string + start, length - start + 1);
     }
 }
+
+char *create_string(const char *format, ...)
+{
+    va_list args, args_copy;
+    va_start(args, format);
+    va_copy(args_copy, args);
+    
+    int size = vsnprintf(NULL, 0, format, args_copy);
+    va_end(args_copy);
+
+    char *string = (char *)malloc(size + 1);
+    if (string == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        va_end(args);
+        return NULL;
+    }
+
+    vsnprintf(string, size + 1, format, args);
+    va_end(args);
+
+    return string;
+}

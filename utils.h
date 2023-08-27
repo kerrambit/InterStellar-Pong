@@ -1,8 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+
+#include "errors.h"
 
 #define STR_EQ(_str1, _str2) (strcmp(_str1, _str2) == 0) ? true : false
 #define SQUARE(_num) (_num * _num)
@@ -42,5 +46,14 @@ void strip_newline(char* string);
  * @param string The input string to be modified.
  */
 void complete_strip(char* string);
+
+/**
+ * Creates a formatted string using a variable argument list.
+ * 
+ * @param format The format string.
+ * @param ... Variable arguments to format.
+ * @return The formatted string, or NULL in case of memory allocation failure.
+ */
+char *create_string(const char *format, ...);
 
 #endif
