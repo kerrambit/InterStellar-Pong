@@ -17,6 +17,8 @@
 
 #include "draw.h"
 #include "errors.h"
+#include "levels.h"
+#include "materials.h"
 #include "page_loader.h"
 #include "player.h"
 #include "utils.h"
@@ -35,13 +37,15 @@ typedef enum game_state_t {
  * @brief Represents the game of Interstellar Pong. Holds general data about the current instance of the game.
  */
 typedef struct game_t {
-    scene_t *scene;          /** Pointer to the game scene. */
-    player_t *player;        /** Pointer to the player object. */
-    player_t *enemy;         /** Pointer to the enemy object. */
-    px_t width;              /** Width of the game screen. */
-    px_t height;             /** Height of the game screen. */
-    game_state_t game_state; /** Current state of the game. */
-    int game_ticks;          /** Represents the number of ball bounces between players. */
+    scene_t *scene;                       /** Pointer to the game scene. */
+    player_t *player;                     /** Pointer to the player object. */
+    player_t *enemy;                      /** Pointer to the enemy object. */
+    px_t width;                           /** Width of the game screen. */
+    px_t height;                          /** Height of the game screen. */
+    game_state_t game_state;              /** Current state of the game. */
+    int game_ticks;                       /** Represents the number of ball bounces between players. */
+    materials_table_t *materials_table;   /** Pointer to the table containing data about materials. */
+    levels_table_t *levels_table;         /** Pointer to the table containing data about game levels. */
 } game_t;
 
 /**

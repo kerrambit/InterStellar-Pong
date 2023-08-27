@@ -1,4 +1,5 @@
 #include <time.h>
+#include <unistd.h>
 
 #include "interstellar_pong.h"
 
@@ -11,9 +12,12 @@
 #define ENEMY_INIT_X_COORD 5
 #define ENEMY_INIT_Y_COORD 5
 
+#define GAME_DATA_PATH "res/game_data.ispdata"
+
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
+static bool load_extern_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
 static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle);
 static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
@@ -78,6 +82,16 @@ game_t *init_game(player_t *player, px_t height, px_t width)
         return NULL;
     }
 
+    game->materials_table = NULL;
+    game->levels_table = NULL;
+
+    if (!load_extern_data(GAME_DATA_PATH, &game->materials_table, &game->levels_table)) {
+        release_player(game->player);
+        release_player(game->enemy);
+        free(game);
+        return NULL;
+    }
+
     srand(time(NULL));
     return game;
 }
@@ -108,6 +122,8 @@ void release_game(game_t *game)
         release_player(game->player);
         release_player(game->enemy);
         release_scene(game->scene);
+        release_materials_table(game->materials_table);
+        release_levels_table(game->levels_table);
         free(game);
     }
 }
@@ -193,6 +209,240 @@ void handle_event(game_t *game, char c)
     } else if (KEYBOARD_PRESSED(c, 'q') || KEYBOARD_PRESSED(c, 'Q')) {
         end_game(game);
     }
+}
+
+/**
+ * @brief Converts a line of material data from a file into material row data.
+ * 
+ * @param table A pointer to the materials table to which the material row will be added.
+ * @param line The line containing material data to be converted.
+ * @param counter The counter indicating the position of the material data.
+ * @return true if the conversion and addition are successful, false otherwise.
+ */
+static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter)
+{
+    const char* DELIMITER = ";";
+
+    char* token;
+    char* line_copy = strdup(line);
+    int prob_size_1_px_t; int prob_size_2_px_t; int prob_rectangle_shape; int prob_square_shape;
+
+    token = strtok(line_copy, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_size_1_px_t)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_size_2_px_t)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_rectangle_shape)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_square_shape)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    // check that line is completely read
+    if (strtok(NULL, DELIMITER) != NULL) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    free(line_copy);
+
+    material_row_t material_row = create_material_row(counter, prob_size_1_px_t, prob_size_2_px_t, prob_rectangle_shape, prob_square_shape);
+    if (add_material(table, material_row) == NULL) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Converts a line of level data from a file into level row data.
+ * 
+ * @param table A pointer to the levels table to which the level row will be added.
+ * @param line The line containing level data to be converted.
+ * @return true if the conversion and addition are successful, false otherwise.
+ */
+static bool convert_line_into_level_data(levels_table_t *table, char *line)
+{
+    const char* DELIMITER = ";";
+
+    char* token;
+    char* line_copy = strdup(line);
+    int stone_request; int copper_request; int iron_request; int gold_request; int prob_stone; int prob_copper; int prob_iron; int prob_gold;   
+
+    token = strtok(line_copy, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &stone_request)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &copper_request)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &iron_request)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &gold_request)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_stone)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_copper)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_iron)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    token = strtok(NULL, DELIMITER);
+    if (token == NULL || !convert_string_2_int(token, &prob_gold)) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    // check that line is completely read
+    if (strtok(NULL, DELIMITER) != NULL) {
+        free(line_copy);
+        resolve_error(INVALID_DATA_IN_FILE);
+        return false;
+    }
+
+    free(line_copy);
+
+    level_row_t level_row = create_level_row(stone_request, copper_request, iron_request, gold_request, prob_stone, prob_copper, prob_iron, prob_gold);
+    if (add_level(table, level_row) == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief Loads external data from a file into materials and levels tables.
+ * 
+ * @param file_path The path to the file containing the external data.
+ * @param materials_table A double pointer to the materials table.
+ * @param levels_table A double pointer to the levels table.
+ * @return true if the loading is successful, false otherwise.
+ */
+static bool load_extern_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table)
+{
+    const char COMMENT = '#';
+
+    *materials_table = create_materials_table();
+    if (materials_table == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return false;
+    }
+
+    *levels_table = create_levels_table();
+    if (levels_table == NULL) {
+        release_materials_table(*materials_table);
+        resolve_error(MEM_ALOC_FAILURE);
+        return false;
+    }
+
+    if (access(file_path, F_OK) != 0) {
+        resolve_error(MISSING_DATA_FILE);
+        release_materials_table(*materials_table);
+        release_levels_table(*levels_table);
+        return false;
+    }
+
+    FILE* file = fopen(file_path, "r");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        release_materials_table(*materials_table);
+        release_levels_table(*levels_table);
+        return false;
+    }
+
+    char* line = NULL;
+    size_t line_length = 0;
+    ssize_t bytes_read;
+    int counter = 0;
+
+    while ((bytes_read = getline(&line, &line_length, file)) != -1) {
+
+        complete_strip(line);
+
+        if (STR_EQ(line, "") || line[0] == COMMENT) {
+            continue;
+        }
+
+        bool converting_return_code;
+        if (counter < 4) {
+            converting_return_code = convert_line_into_material_data(*materials_table, line, counter);
+        } else if (counter > 3 && counter < 8) {
+            converting_return_code = convert_line_into_level_data(*levels_table, line);
+        } else {
+            converting_return_code = false;
+            resolve_error(INVALID_DATA_IN_FILE);
+        }
+
+        if (!converting_return_code) {
+            free(line);
+            release_materials_table(*materials_table);
+            release_levels_table(*levels_table);
+            fclose(file);
+            return false;
+        }
+        counter++;
+    }
+
+    free(line);
+    fclose(file);
+
+    if (counter != 8) {
+        resolve_error(INVALID_DATA_IN_FILE);
+        release_materials_table(*materials_table);
+        release_levels_table(*levels_table);
+        return false;
+    }
+    
+    return true;
 }
 
 /**
