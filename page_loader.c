@@ -10,6 +10,7 @@
 #include "errors.h"
 #include "interstellar_pong.h"
 #include "page_loader.h"
+#include "paths.h"
 #include "player.h"
 #include "terminal.h"
 #include "utils.h"
@@ -18,7 +19,6 @@
 
 #define COMMAND_EQ(command, ch, CH, word, WORD) (STR_EQ(command, ch) || STR_EQ(command, CH) || STR_EQ(command, word) || STR_EQ(command, WORD))
 #define GAME_WIDTH 80
-#define PLAYERS_DATA_PATH "res/players.data"
 
 // ---------------------------------------- STATIC DECLARATIONS--------------------------------- //
 
