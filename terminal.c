@@ -10,7 +10,7 @@
 
 // ---------------------------------------- MACROS --------------------------------------------- //
 
-#define TERMINAL_FILE_PATH "res/tmp_user_input.data"
+#define TERMINAL_FILE_PATH "tmp_user_input.data"
 #define BACKSPACE 127
 #define ESCPAPE 27
 #define NEWLINE '\n'
