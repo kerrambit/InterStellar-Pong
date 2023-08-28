@@ -46,6 +46,7 @@ static bool check_name(const char *name, page_loader_inner_data_t *data);
 static player_t *find_player(const char *name, const char *file_path);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static page_t choose_pregame_page(page_loader_inner_data_t *data);
+static const char *create_level_info_string(player_t *player);
 static players_array_t *load_players(const char* file_path);
 static void put_game_logo(px_t width, position_t position);
 static void display_live_stats(game_t *game);
@@ -872,6 +873,48 @@ static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inn
 }
 
 /**
+ * @brief Creates a formatted resources string based on player and level data.
+ *
+ * This function creates a formatted string that displays the resources' current amounts and request amounts
+ * based on the provided player and level data. It formats the string differently depending on whether gold,
+ * iron, or copper resources are requested.
+ *
+ * @param player A pointer to the player_t structure containing resource amounts.
+ * @param level A level_row_t structure containing resource request amounts.
+ * @return A dynamically allocated string representing the formatted resources string.
+ *         The caller is responsible for freeing the memory when done using the string.
+ * @warning The created string must be freed by the caller when no longer needed.
+ */
+static const char *create_level_info_string(player_t *player)
+{
+    levels_table_t *levels = NULL;
+    materials_table_t *materials = NULL;
+    if (!load_extern_game_data(GAME_DATA_PATH, &materials, &levels)) {
+        return NULL;
+    }
+
+    char *level_info = NULL;
+    if (player->level + 1 > levels->count - 1) {
+        level_info = create_string("You have reached the maximum level! You are now the master of the interstellar space...");
+    } else {
+        level_info = create_string("For the level %d you need still: STONE (%d/%d), COPPER (%d/%d), IRON (%d/%d) and GOLD (%d/%d).", player->level + 1,
+                                                                                                                                     player->stone,
+                                                                                                                                     levels->levels[player->level + 1].stone_request,
+                                                                                                                                     player->copper,
+                                                                                                                                     levels->levels[player->level + 1].copper_request,
+                                                                                                                                     player->iron,
+                                                                                                                                     levels->levels[player->level + 1].iron_request,
+                                                                                                                                     player->gold,
+                                                                                                                                     levels->levels[player->level + 1].gold_request);
+    }
+
+    release_levels_table(levels);
+    release_materials_table(materials);
+
+    return level_info;
+}
+
+/**
  * Loads the after-game page, displaying game statistics for the player.
  * 
  * @param height The height of the display.
@@ -905,9 +948,9 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
 
-    char *game_collected = create_string("In the game you collected: %d STONE, %d IRON, %d COPPER and %d GOLD.", updated_player->stone - data->player_choosen_to_game->stone,
-                                                                                                                 updated_player->iron - data->player_choosen_to_game->iron,
+    char *game_collected = create_string("In the game you collected: %d STONE, %d COPPER, %d IRON and %d GOLD.", updated_player->stone - data->player_choosen_to_game->stone,
                                                                                                                  updated_player->copper - data->player_choosen_to_game->copper,
+                                                                                                                 updated_player->iron - data->player_choosen_to_game->iron,
                                                                                                                  updated_player->gold - data->player_choosen_to_game->gold);
     if (game_collected == NULL) {
         release_player(updated_player);
@@ -916,11 +959,14 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
 
-    char *level_info = create_string("For the level %d you need still: STONE (%d/?), IRON (%d/?), COPPER (%d/?) and GOLD (%d/?).", updated_player->level + 1,
-                                                                                                                                   updated_player->stone,
-                                                                                                                                   updated_player->iron,
-                                                                                                                                   updated_player->copper,
-                                                                                                                                   updated_player->gold);
+    char *level_info = (char*)create_level_info_string(updated_player);
+    if (level_info == NULL) {
+        release_player(updated_player);
+        release_player(data->player_choosen_to_game);
+        free(intro);
+        return ERROR;
+    }
+
     if (level_info == NULL) {
         free(game_collected);
         free(intro);
