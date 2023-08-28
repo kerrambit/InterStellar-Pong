@@ -24,14 +24,14 @@
 # resources the user must collect to finish the level. The later 4 numbers represents the probability
 # of spawning the given material. All materials are ordered as STONE;COPPER;IRON;GOLD.
 
-# LVL1: Stone Age
+# LVL0: Stone Age
 10;0;0;0;100;0;0;0
 
-# LVL2: Copper Conquest
+# LVL1: Copper Conquest
 10;10;0;0;75;25;0;0
 
-# LVL3: Iron Odyssey
+# LVL2: Iron Odyssey
 20;10;10;0;70;15;15;0
 
-# LVL4: Golden Epoch
+# LVL3: Golden Epoch
 25;20;15;10;50;25;15;10
