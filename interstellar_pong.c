@@ -17,7 +17,7 @@
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
-static bool load_extern_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table);
+static bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
 static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle);
 static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
@@ -85,7 +85,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     game->materials_table = NULL;
     game->levels_table = NULL;
 
-    if (!load_extern_data(GAME_DATA_PATH, &game->materials_table, &game->levels_table)) {
+    if (!load_extern_game_data(GAME_DATA_PATH, &game->materials_table, &game->levels_table)) {
         release_player(game->player);
         release_player(game->enemy);
         free(game);
@@ -367,7 +367,7 @@ static bool convert_line_into_level_data(levels_table_t *table, char *line)
  * @param levels_table A double pointer to the levels table.
  * @return true if the loading is successful, false otherwise.
  */
-static bool load_extern_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table)
+static bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table)
 {
     const char COMMENT = '#';
 
@@ -441,7 +441,7 @@ static bool load_extern_data(const char *file_path, materials_table_t **material
         release_levels_table(*levels_table);
         return false;
     }
-    
+
     return true;
 }
 
