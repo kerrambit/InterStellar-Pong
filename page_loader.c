@@ -35,7 +35,9 @@ static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t 
 
 static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
+static void display_resources(player_t *player, levels_table_t *levels, int width);
 static int update_players_stats(player_t *target_player, const char *file_path);
+static const char *create_resources_string(player_t *player, level_row_t level);
 static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
 static char *create_player_string(player_t *player, bool end_with_newline);
 static void display_hearts(const char *player_name, int number_of_hearts);
@@ -45,7 +47,6 @@ static player_t *find_player(const char *name, const char *file_path);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static page_t choose_pregame_page(page_loader_inner_data_t *data);
 static players_array_t *load_players(const char* file_path);
-static void display_resources(player_t *player, int width);
 static void put_game_logo(px_t width, position_t position);
 static void display_live_stats(game_t *game);
 
@@ -1078,15 +1079,69 @@ static void display_hearts(const char *player_name, int number_of_hearts)
 }
 
 /**
+ * @brief Creates a formatted resources string based on player and level data.
+ *
+ * This function creates a formatted string that displays the resources' current amounts and request amounts
+ * based on the provided player and level data.
+ *
+ * @param player A pointer to the player_t structure containing resource amounts.
+ * @param level A level_row_t structure containing resource request amounts.
+ * @return A dynamically allocated string representing the formatted resources string.
+ *         The caller is responsible for freeing the memory when done using the string.
+ * @warning The created string must be freed by the caller when no longer needed!
+ */
+static const char *create_resources_string(player_t *player, level_row_t level)
+{
+    if (level.gold_request != 0) {
+        return create_string("STONE (%d/%d) COPPER(%d/%d) IRON(%d/%d) GOLD(%d/%d)",
+                             player->stone, level.stone_request,
+                             player->copper, level.copper_request,
+                             player->iron, level.iron_request,
+                             player->gold, level.gold_request);
+    }
+
+    if (level.iron_request != 0) {
+        return create_string("STONE (%d/%d) COPPER(%d/%d) IRON(%d/%d)",
+                             player->stone, level.stone_request,
+                             player->copper, level.copper_request,
+                             player->iron, level.iron_request);
+    }
+
+    if (level.copper_request != 0) {
+        return create_string("STONE (%d/%d) COPPER(%d/%d)",
+                             player->stone, level.stone_request,
+                             player->copper, level.copper_request);
+    }
+
+    return create_string("STONE (%d/%d)", player->stone, level.stone_request);
+}
+
+/**
  * Displays resource information for a player.
  * 
  * @param player The player whose resources to display.
+ * @param levels The data about the game levels.
  * @param width The width of the display.
  */
-static void display_resources(player_t *player, int width)
+static void display_resources(player_t *player, levels_table_t *levels, int width)
 {
     put_text("Resources:", width, CENTER);
-    write_text("\t\t   STONE (%d/?) IRON(%d/?) COPPER(%d/?) GOLD(%d/?) ", player->stone, player->iron, player->copper, player->gold);
+
+    const char *string = NULL;
+    if (player->level > (levels->count - 1)) {
+       string = create_string("STONE (%d/N.A.) COPPER(%d/N.A.) IRON(%d/N.A.) GOLD(%d/N.A.)", player->stone, player->copper, player->iron, player->gold);
+    } else {
+        string = create_resources_string(player, levels->levels[player->level]);
+    }
+
+    if (string == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        put_text("Memory allocation error occured. Data about your resources could not be loaded.", width, CENTER);
+        return;
+    }
+
+    put_text(string, width, CENTER);
+    free((char*)string);
 }
 
 /**
@@ -1100,7 +1155,7 @@ static void display_live_stats(game_t *game)
     display_hearts("Enemy", game->enemy->hearts);
     display_hearts("\t\t\t      Your", game->player->hearts);
     write_text("\n");
-    display_resources(game->player, game->width);
+    display_resources(game->player, game->levels_table, game->width);
 }
 
 /**
