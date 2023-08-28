@@ -120,4 +120,14 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer);
  */
 void handle_event(game_t *game, char c);
 
+/**
+ * @brief Loads external data from a file into materials and levels tables.
+ * 
+ * @param file_path The path to the file containing the external data.
+ * @param materials_table A double pointer to the materials table.
+ * @param levels_table A double pointer to the levels table.
+ * @return true if the loading is successful, false otherwise.
+ */
+bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table);
+
 #endif

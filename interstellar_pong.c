@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include "interstellar_pong.h"
+#include "paths.h"
 
 // ---------------------------------------- MACROS --------------------------------------------- //
 
@@ -12,15 +13,14 @@
 #define ENEMY_INIT_X_COORD 5
 #define ENEMY_INIT_Y_COORD 5
 
-#define GAME_DATA_PATH "res/game_data.ispdata"
-
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
-static bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
+static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter);
 static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle);
 static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
+static bool convert_line_into_level_data(levels_table_t *table, char *line);
 static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game);
 static bool detect_collision(ID_t collision_ID, rectangle_t *object);
 static void bounce_ball(rectangle_t *ball, px_t width, px_t height);
@@ -211,6 +211,84 @@ void handle_event(game_t *game, char c)
     }
 }
 
+bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table)
+{
+    const char COMMENT = '#';
+
+    *materials_table = create_materials_table();
+    if (materials_table == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return false;
+    }
+
+    *levels_table = create_levels_table();
+    if (levels_table == NULL) {
+        release_materials_table(*materials_table);
+        resolve_error(MEM_ALOC_FAILURE);
+        return false;
+    }
+
+    if (access(file_path, F_OK) != 0) {
+        resolve_error(MISSING_DATA_FILE);
+        release_materials_table(*materials_table);
+        release_levels_table(*levels_table);
+        return false;
+    }
+
+    FILE* file = fopen(file_path, "r");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        release_materials_table(*materials_table);
+        release_levels_table(*levels_table);
+        return false;
+    }
+
+    char* line = NULL;
+    size_t line_length = 0;
+    ssize_t bytes_read;
+    int counter = 0;
+
+    while ((bytes_read = getline(&line, &line_length, file)) != -1) {
+
+        complete_strip(line);
+
+        if (STR_EQ(line, "") || line[0] == COMMENT) {
+            continue;
+        }
+
+        bool converting_return_code;
+        if (counter < 4) {
+            converting_return_code = convert_line_into_material_data(*materials_table, line, counter);
+        } else if (counter > 3 && counter < 8) {
+            converting_return_code = convert_line_into_level_data(*levels_table, line);
+        } else {
+            converting_return_code = false;
+            resolve_error(INVALID_DATA_IN_FILE);
+        }
+
+        if (!converting_return_code) {
+            free(line);
+            release_materials_table(*materials_table);
+            release_levels_table(*levels_table);
+            fclose(file);
+            return false;
+        }
+        counter++;
+    }
+
+    free(line);
+    fclose(file);
+
+    if (counter != 8) {
+        resolve_error(INVALID_DATA_IN_FILE);
+        release_materials_table(*materials_table);
+        release_levels_table(*levels_table);
+        return false;
+    }
+
+    return true;
+}
+
 /**
  * @brief Converts a line of material data from a file into material row data.
  * 
@@ -356,92 +434,6 @@ static bool convert_line_into_level_data(levels_table_t *table, char *line)
         resolve_error(MEM_ALOC_FAILURE);
         return false;
     }
-    return true;
-}
-
-/**
- * @brief Loads external data from a file into materials and levels tables.
- * 
- * @param file_path The path to the file containing the external data.
- * @param materials_table A double pointer to the materials table.
- * @param levels_table A double pointer to the levels table.
- * @return true if the loading is successful, false otherwise.
- */
-static bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table)
-{
-    const char COMMENT = '#';
-
-    *materials_table = create_materials_table();
-    if (materials_table == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
-        return false;
-    }
-
-    *levels_table = create_levels_table();
-    if (levels_table == NULL) {
-        release_materials_table(*materials_table);
-        resolve_error(MEM_ALOC_FAILURE);
-        return false;
-    }
-
-    if (access(file_path, F_OK) != 0) {
-        resolve_error(MISSING_DATA_FILE);
-        release_materials_table(*materials_table);
-        release_levels_table(*levels_table);
-        return false;
-    }
-
-    FILE* file = fopen(file_path, "r");
-    if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
-        release_materials_table(*materials_table);
-        release_levels_table(*levels_table);
-        return false;
-    }
-
-    char* line = NULL;
-    size_t line_length = 0;
-    ssize_t bytes_read;
-    int counter = 0;
-
-    while ((bytes_read = getline(&line, &line_length, file)) != -1) {
-
-        complete_strip(line);
-
-        if (STR_EQ(line, "") || line[0] == COMMENT) {
-            continue;
-        }
-
-        bool converting_return_code;
-        if (counter < 4) {
-            converting_return_code = convert_line_into_material_data(*materials_table, line, counter);
-        } else if (counter > 3 && counter < 8) {
-            converting_return_code = convert_line_into_level_data(*levels_table, line);
-        } else {
-            converting_return_code = false;
-            resolve_error(INVALID_DATA_IN_FILE);
-        }
-
-        if (!converting_return_code) {
-            free(line);
-            release_materials_table(*materials_table);
-            release_levels_table(*levels_table);
-            fclose(file);
-            return false;
-        }
-        counter++;
-    }
-
-    free(line);
-    fclose(file);
-
-    if (counter != 8) {
-        resolve_error(INVALID_DATA_IN_FILE);
-        release_materials_table(*materials_table);
-        release_levels_table(*levels_table);
-        return false;
-    }
-
     return true;
 }
 
