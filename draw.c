@@ -317,6 +317,8 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene)
                     printf("\033[0;94m█\033[0m"); break;
                 case YELLOW:
                     printf("\033[0;93m█\033[0m"); break;
+                case ORANGE:
+                    printf("\033[38;5;208m█\033[0m"); break; 
                 case MAGENTA:
                     printf("\033[0;95m█\033[0m"); break;
                 case CYAN:

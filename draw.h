@@ -57,6 +57,7 @@ typedef enum colour_t {
     GREEN,          /** Green color. */
     BLUE,           /** Blue color. */
     YELLOW,         /** Yellow color. */
+    ORANGE,          /** Orange color. */
     MAGENTA,        /** Magenta color. */
     CYAN,           /** Cyan color. */
     LIGHT_GRAY,     /** Light gray color. */
