@@ -12,16 +12,28 @@
 #ifndef MATERIALS_H
 #define MATERIALS_H
 
+#include "draw.h"
+
+#define MATERIALS_COUNT 4
+
 /**
  * @enum material_type_h
- * @brief Enumerates different types of materials.
+ * @brief Enumerates different types of materials. Each material is mapped to its colour.
  */
 typedef enum material_type_t {
-    STONE,
-    COPPER,
-    IRON,
-    GOLD
+    STONE=DARK_GRAY,    /** Represents a stone material type. */
+    COPPER=ORANGE,      /** Represents a copper material type. */
+    IRON=LIGHT_RED,     /** Represents a iron material type. */
+    GOLD=YELLOW         /** Represents a gold material type. */
 } material_type_t;
+
+/**
+ * @brief This enumeration defines two possible shapes for a material object:
+ */
+typedef enum material_shape_t {
+    RECTANGLE = 1,     /** Represents a square shape. */
+    SQUARE            /** Represents a rectangular shape. */
+} material_shape_t;
 
 /**
  * @struct material_row_t
