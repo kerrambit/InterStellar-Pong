@@ -594,7 +594,7 @@ static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_
         player_level = levels->count - 1;
     }
 
-    set_x_position(meteor, (rand() % (width - 10)) + 5);
+    set_x_position(meteor, (rand() % (width - 21)) + 10);
     set_y_position(meteor, (rand() % (height - 10)) + 5);
     set_colour(meteor, (colour_t)count_meteor_material_from_level(levels->levels[player_level]));
     set_meteor_size(meteor, materials);
