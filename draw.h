@@ -94,8 +94,8 @@ typedef struct rectangle_t {
     ID_t ID;                 /** ID of the rectangle object. */
     px_t position_x;         /** Horizontal coordinate of the top-left corner of the rectangle. */
     px_t position_y;         /** Vertical coordinate of the top-left corner of the rectangle. */
-    px_t side_length_1;      /** Length of one side of the rectangle. */
-    px_t side_length_2;      /** Length of the other side of the rectangle. */
+    px_t width;      /** Length of one side of the rectangle. */
+    px_t height;      /** Length of the other side of the rectangle. */
     int x_speed;             /** X-axis speed of the rectangle. */
     int y_speed;             /** Y-axis speed of the rectangle. */
     colour_t colour;         /** Color of the rectangle. */
@@ -246,15 +246,15 @@ void reset_pixel_buffer(pixel_buffer_t *pixel_buffer);
  * 
  * @param position_x The X position of the rectangle.
  * @param position_y The Y position of the rectangle.
- * @param side_length_1 The length of one side of the rectangle.
- * @param side_length_2 The length of the other side of the rectangle.
+ * @param width The length of one side of the rectangle.
+ * @param height The length of the other side of the rectangle.
  * @param x_speed The speed of the rectangle along the X-axis.
  * @param y_speed The speed of the rectangle along the Y-axis.
  * @param colour The color of the rectangle.
  * @param name The name of the rectangle.
  * @return A pointer to the created rectangle object.
  */
-rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour, const char *name);
+rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t width, px_t height, int x_speed, int y_speed, colour_t colour, const char *name);
 
 /**
  * @brief Releases memory allocated for a rectangle object.

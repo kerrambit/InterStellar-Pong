@@ -361,8 +361,8 @@ ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *
         return UNDEFINIED_ID;
     }
 
-    for (px_t i = object->position_y; i < object->position_y + object->side_length_2; ++i) {
-        for (px_t j = object->position_x; j < object->position_x + object->side_length_1; ++j) {
+    for (px_t i = object->position_y; i < object->position_y + object->height; ++i) {
+        for (px_t j = object->position_x; j < object->position_x + object->width; ++j) {
 
             if ((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
                 if (pixel_buffer->buff[i * pixel_buffer->width + j] != UNDEFINIED_ID) {
@@ -386,7 +386,7 @@ void reset_pixel_buffer(pixel_buffer_t *pixel_buffer)
     }
 }
 
-rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour, const char *name)
+rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t width, px_t height, int x_speed, int y_speed, colour_t colour, const char *name)
 {
     rectangle_t *rectangle = malloc(sizeof(rectangle_t));
     if (rectangle == NULL) {
@@ -396,7 +396,7 @@ rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length
     rectangle->ID = generate_id();
     rectangle->position_x = position_x; rectangle->position_y = position_y;
     rectangle->x_speed = x_speed; rectangle->y_speed = y_speed;
-    rectangle->side_length_1 = side_length_1 * 2; rectangle->side_length_2 = side_length_2;
+    rectangle->width = width * 2; rectangle->height = height;
     rectangle->colour = colour;
     rectangle->name = malloc(strlen(name) + 1);
 
