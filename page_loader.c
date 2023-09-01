@@ -899,13 +899,13 @@ static const char *create_level_info_string(player_t *player)
     } else {
         level_info = create_string("For the level %d you need still: STONE (%d/%d), COPPER (%d/%d), IRON (%d/%d) and GOLD (%d/%d).", player->level + 1,
                                                                                                                                      player->stone,
-                                                                                                                                     levels->levels[player->level + 1].stone_request,
+                                                                                                                                     levels->levels[player->level].stone_request,
                                                                                                                                      player->copper,
-                                                                                                                                     levels->levels[player->level + 1].copper_request,
+                                                                                                                                     levels->levels[player->level].copper_request,
                                                                                                                                      player->iron,
-                                                                                                                                     levels->levels[player->level + 1].iron_request,
+                                                                                                                                     levels->levels[player->level].iron_request,
                                                                                                                                      player->gold,
-                                                                                                                                     levels->levels[player->level + 1].gold_request);
+                                                                                                                                     levels->levels[player->level].gold_request);
     }
 
     release_levels_table(levels);
