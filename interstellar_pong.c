@@ -44,6 +44,8 @@ static int get_side_length_2(rectangle_t *object);
 static void set_x_speed(rectangle_t *object, int speed);
 static void set_y_speed(rectangle_t *object, int speed);
 static void set_colour(rectangle_t *object, colour_t colour);
+static void set_side_length_1(rectangle_t *object, px_t size);
+static void set_side_length_2(rectangle_t *object, px_t size);
 static void set_x_position(rectangle_t *object, px_t position);
 static void set_y_position(rectangle_t *object, px_t position);
 
@@ -763,6 +765,28 @@ static void set_y_position(rectangle_t *object, px_t position)
 static int get_side_length_1(rectangle_t *object)
 {
     return object->side_length_1;
+}
+
+/**
+ * @brief Sets the value of the first side length of a rectangle object.
+ * 
+ * @param object A pointer to the rectangle object whose first side length is to be set.
+ * @param size The value to set as the first side length.
+ */
+static void set_side_length_1(rectangle_t *object, px_t size)
+{
+    object->side_length_1 = size;
+}
+
+/**
+ * @brief Sets the value of the second side length of a rectangle object.
+ *
+ * @param object A pointer to the rectangle object whose second side length is to be set.
+ * @param size The value to set as the second side length.
+ */
+static void set_side_length_2(rectangle_t *object, px_t size)
+{
+    object->side_length_2 = size;
 }
 
 /**
