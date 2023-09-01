@@ -1175,7 +1175,7 @@ static void display_resources(player_t *player, levels_table_t *levels, int widt
 
     const char *string = NULL;
     if (player->level > (levels->count - 1)) {
-       string = create_string("STONE (%d/N.A.) COPPER(%d/N.A.) IRON(%d/N.A.) GOLD(%d/N.A.)", player->stone, player->copper, player->iron, player->gold);
+       string = create_string("STONE(%d/N.A.) COPPER(%d/N.A.) IRON(%d/N.A.) GOLD(%d/N.A.)", player->stone, player->copper, player->iron, player->gold);
     } else {
         string = create_resources_string(player, levels->levels[player->level]);
     }
