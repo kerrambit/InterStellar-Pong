@@ -13,19 +13,32 @@
 #define ENEMY_INIT_X_COORD 5
 #define ENEMY_INIT_Y_COORD 5
 
+#define SMALL_METEOR_SIZE 2
+#define BIG_METEOR_SIZE 3
+
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
 static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
+static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials);
+static material_type_t count_meteor_material_from_level(level_row_t level);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
 static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter);
 static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle);
 static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
+static int compute_cumulative_distribution(const int *probabilities, int count);
+static void set_meteor_shape(rectangle_t *meteor, materials_table_t *materials);
+static void set_meteor_size(rectangle_t *meteor, materials_table_t *materials);
 static bool convert_line_into_level_data(levels_table_t *table, char *line);
 static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game);
+static void update_player_resources(rectangle_t *meteor, player_t *player);
+static int get_index_based_on_material_type(material_type_t material);
 static bool detect_collision(ID_t collision_ID, rectangle_t *object);
 static void bounce_ball(rectangle_t *ball, px_t width, px_t height);
+static material_type_t get_material_type_based_on_index(int index);
 static rectangle_t *find_object(game_t *game, const char *name);
+static material_shape_t get_meteors_shape(rectangle_t *meteor);
 static void set_objects_to_initial_position(game_t *game);
+static void test_meteors_generator(int tested_level); // TODO this should not be compiled in release mode
 static void move_ball(rectangle_t *ball);
 
 static int get_width(game_t *game);
@@ -140,13 +153,17 @@ scene_t *init_scene(game_t *game)
 
     if (!create_rectangle_and_add_it_to_scene(scene, BALL_INIT_X_COORD, BALL_INIT_Y_COORD, 1, 1, 2, 1, WHITE, "ball") ||
         !create_rectangle_and_add_it_to_scene(scene, PLAYER_INIT_X_COORD, PLAYER_INIT_Y_COORD, 1, 5, 0, 0, GREEN, "player") ||
-        !create_rectangle_and_add_it_to_scene(scene, 15, 13, 2, 2, 0, 0, DARK_GRAY, "meteor_1") ||
-        !create_rectangle_and_add_it_to_scene(scene, 50, 5, 1, 2, 0, 0, DARK_GRAY, "meteor_2") ||
+        !create_rectangle_and_add_it_to_scene(scene, 15, 13, 0, 0, 0, 0, (colour_t)STONE, "meteor_1") ||
+        !create_rectangle_and_add_it_to_scene(scene, 50, 5, 0, 0, 0, 0, (colour_t)STONE, "meteor_2") ||
         !create_rectangle_and_add_it_to_scene(scene, ENEMY_INIT_X_COORD, ENEMY_INIT_Y_COORD, 1, 5, 0, 0, RED, "enemy")) {
         return NULL;
     }
 
     game->scene = scene;
+
+    set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table);
+    set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table);
+
     return game->scene;
 }
 
@@ -289,6 +306,191 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
     }
 
     return true;
+}
+
+/**
+ * @brief Gets the material type based on the given index.
+ *
+ * This function maps an index to a specific material type.
+ *
+ * @param index The index to map to a material type.
+ * @return The material type corresponding to the index. If the index is out of range, STONE is returned as a default.
+ */
+static material_type_t get_material_type_based_on_index(int index)
+{
+    switch (index)
+    {
+    case 0: return STONE;
+    case 1: return COPPER;
+    case 2: return IRON;
+    case 3: return GOLD;
+    default: return STONE;
+    }
+}
+
+/**
+ * @brief Gets the index based on the given material type.
+ *
+ * This function maps a materil type to a specific index.
+ *
+ * @param material The material type to map to an index.
+ * @return The index corresponding to the material type. If the material type is not found, 0 is returned as a default.
+ */
+static int get_index_based_on_material_type(material_type_t material)
+{
+    switch (material)
+    {
+    case STONE: return 0;
+    case COPPER: return 1;
+    case IRON: return 2;
+    case GOLD: return 3;
+    default: return 0;
+    }
+}
+
+/**
+ * @brief Computes the cumulative distribution and choose a random index based on probabilities.
+ *
+ * This function computes the cumulative distribution of the given probabilities array and then chooses a random index
+ * based on these cumulative probabilities. The probabilities array is assumed to contain integer values representing
+ * probabilities for each element.
+ *
+ * @param probabilities An array of probabilities for each element.
+ * @param count The number of elements in the probabilities array.
+ * @return The chosen index based on probabilities, or -1 if an error occurs.
+ */
+static int compute_cumulative_distribution(const int *probabilities, int count)
+{
+    int cumulative_probabilities[count];
+
+    int cumulative = 0;
+    for (int i = 0; i < count; ++i) {
+        cumulative += probabilities[i];
+        cumulative_probabilities[i] = cumulative;
+    }
+
+    int random_number = rand() % 100 + 1;
+
+    for (int i = 0; i < count; ++i) {
+        if (random_number <= cumulative_probabilities[i]) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+/**
+ * @brief Sets the size of a meteor object based on material probabilities.
+ *
+ * This function calculates the size of a meteor object based on the given materials' probabilities.
+ *
+ * @param meteor Pointer to the rectangle_t structure representing the meteor object.
+ * @param materials Pointer to the materials_table_t structure containing material probabilities.
+ */
+static void set_meteor_size(rectangle_t *meteor, materials_table_t *materials)
+{
+    const int SIZES_COUNT = 2;
+    int probabilities[SIZES_COUNT];
+    probabilities[0] = materials->materials[get_index_based_on_material_type((material_type_t)get_colour(meteor))].prob_size_1_px_t;
+    probabilities[1] = materials->materials[get_index_based_on_material_type((material_type_t)get_colour(meteor))].prob_size_2_px_t;
+    
+    int size_index = compute_cumulative_distribution(probabilities, SIZES_COUNT);
+
+    int size;
+    switch (size_index)
+    {
+    case 0:
+        size = 2;
+        break;
+    case 1:
+        size = 3;
+        break;
+    default:
+        size = 2;
+        break;
+    }
+
+    set_side_length_1(meteor, size);
+    set_side_length_2(meteor, size);
+}
+
+/**
+ * @brief Sets the shape of a meteor object based on material probabilities and current size.
+ *
+ * This function calculates the shape of a meteor object based on the provided materials' probabilities
+ * and the current size of the meteor.
+ *
+ * @param meteor Pointer to the rectangle_t structure representing the meteor object.
+ * @param materials Pointer to the materials_table_t structure containing material probabilities.
+ */
+static void set_meteor_shape(rectangle_t *meteor, materials_table_t *materials)
+{
+    const int SHAPE_COUNT = 2;
+    int probabilities[SHAPE_COUNT];
+    probabilities[0] = materials->materials[get_index_based_on_material_type((material_type_t)get_colour(meteor))].prob_rectangle_shape;
+    probabilities[1] = materials->materials[get_index_based_on_material_type((material_type_t)get_colour(meteor))].prob_square_shape;
+
+    int size_index = compute_cumulative_distribution(probabilities, SHAPE_COUNT);
+
+    bool is_meteor_big = false;
+    if (get_side_length_1(meteor) == BIG_METEOR_SIZE) {
+        is_meteor_big = true;
+    }
+
+    switch (size_index)
+    {
+    case RECTANGLE:
+        if (is_meteor_big) {
+            set_side_length_1(meteor, 2);
+        } else {
+            set_side_length_2(meteor, 1);
+        }
+        break;
+    case SQUARE:
+        break;
+    default:
+        break;
+    }
+}
+
+/**
+ * @brief Determines the meteor material type based on the given level's probabilities.
+ *
+ * This function calculates the meteor material type based on the probabilities provided in the given level.
+ *
+ * @param level The level_row_t structure containing probabilities for different materials.
+ * @return The material_type_t of the meteor material chosen based on probabilities.
+ */
+static material_type_t count_meteor_material_from_level(level_row_t level)
+{
+    int probabilities[MATERIALS_COUNT] = { level.prob_stone, level.prob_copper, level.prob_iron, level.prob_gold };
+    int material_index = compute_cumulative_distribution(probabilities, MATERIALS_COUNT);
+
+    return get_material_type_based_on_index(material_index);
+}
+
+/**
+ * @brief Sets the properties of a meteor object based on player level, level data, and material data.
+ *
+ * This function sets the properties of a meteor object, including its color, size, and shape, based on
+ * the player's level, level data, and material data.
+ *
+ * @param meteor Pointer to the rectangle_t structure representing the meteor object.
+ * @param player_level The player's level.
+ * @param levels Pointer to the levels_table_t structure containing level data.
+ * @param materials Pointer to the materials_table_t structure containing material data.
+ */
+static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials)
+{
+    if (player_level > levels->count - 1) {
+        player_level = levels->count - 1;
+    }
+
+    set_colour(meteor, (colour_t)count_meteor_material_from_level(levels->levels[player_level]));
+    set_meteor_size(meteor, materials);
+    set_meteor_shape(meteor, materials);
+    fprintf(stderr, "Generated meteor: size_1: %d, size_2: %d, material: %s\n", meteor->side_length_1,meteor->side_length_2, convert_material_type_2_string((material_type_t)meteor->colour));
 }
 
 /**
@@ -591,6 +793,69 @@ static void set_objects_to_initial_position(game_t *game)
 }
 
 /**
+ * Determines the shape of a meteor based on its dimensions.
+ *
+ * This function determines the shape of a meteor (square or rectangle) based on
+ * its dimensions.
+ *
+ * @param meteor A pointer to the meteor whose shape is to be determined.
+ * @return The shape of the meteor, either SQUARE or RECTANGLE.
+ */
+static material_shape_t get_meteors_shape(rectangle_t *meteor)
+{
+    if (get_side_length_1(meteor) == get_side_length_2(meteor)) {
+        return SQUARE;
+    }
+    return RECTANGLE;
+}
+
+/**
+ * Updates the player's resources based on the properties of a meteor.
+ *
+ * This function updates the player's resource counts based on the properties of
+ * the specified meteor. The meteor's size and material type determine the
+ * resource increments.
+ *
+ * @param meteor A pointer to the meteor whose properties are considered.
+ * @param player A pointer to the player whose resources are updated.
+ */
+static void update_player_resources(rectangle_t *meteor, player_t *player)
+{
+    int increment;
+
+    if (get_side_length_1(meteor) == SMALL_METEOR_SIZE) {
+        increment = 1;
+    } else {
+        increment = 3;
+    }
+
+    if (get_meteors_shape(meteor) == SQUARE) {
+        increment++;
+    }
+
+    fprintf(stderr, "Collected meteor: size_1: %d, size_2: %d, material: %s; ", meteor->side_length_1,meteor->side_length_2, convert_material_type_2_string((material_type_t)meteor->colour));
+    fprintf(stderr, "resources were updated by %d\n", increment);
+
+    switch (meteor->colour)
+    {
+    case STONE:
+        player->stone += increment;
+        break;
+    case COPPER:
+        player->copper += increment;
+        break;
+    case IRON:
+        player->iron += increment;
+        break;
+    case GOLD:
+        player->gold += increment;
+        break;
+    default:
+        break;
+    }
+}
+
+/**
  * @brief Handles the collision between the ball and a meteor object.
  * 
  * @param meteor The meteor rectangle.
@@ -599,10 +864,10 @@ static void set_objects_to_initial_position(game_t *game)
 static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game)
 {
     if (get_game_ticks(game) % 2 != 0) {
-        game->player->stone++;
+        update_player_resources(meteor, game->player);
     }
 
-    set_colour(meteor, DARK_GRAY);
+    set_meteor_properties(meteor, game->player->level, game->levels_table, game->materials_table);
     set_x_position(meteor, (rand() % (get_width(game) - 10)) + 5);
     set_y_position(meteor, (rand() % (get_height(game) - 10)) + 5);
 }
@@ -653,6 +918,50 @@ static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x
     }
 
     return true;
+}
+
+/**
+ * Tests the meteor generator by generating and logging meteor properties.
+ *
+ * This function generates meteor properties based on the specified tested level
+ * and logs them to a file named "meteors_generator_output.log". The test is
+ * performed for a total of 1000 meteor objects.
+ *
+ * @param tested_level The level for which meteor properties are tested.
+ */
+static void test_meteors_generator(int tested_level)
+{
+    const char *TEST_FILE_NAME = "test_meteors_generator_output.log";
+    materials_table_t *materials = NULL;
+    levels_table_t *levels = NULL;
+    if (!load_extern_game_data(GAME_DATA_PATH, &materials, &levels)) {
+        return;
+    }
+
+    if (tested_level > levels->count - 1) {
+        tested_level = levels->count - 1;
+    }
+
+    if (access(TEST_FILE_NAME, F_OK) == 0) {
+        remove(TEST_FILE_NAME);
+    }
+
+    FILE *file = fopen(TEST_FILE_NAME, "a");
+    fprintf(file, "Tested level: %d.\n\n", tested_level);
+
+    for (int i = 0; i < 1000; ++i) {
+        rectangle_t *testing_meteor = create_rectangle(0, 0, 0, 0, 0, 0, WHITE, "testing meteor");
+        set_colour(testing_meteor, (colour_t)count_meteor_material_from_level(levels->levels[tested_level]));
+        set_meteor_size(testing_meteor, materials);
+        set_meteor_shape(testing_meteor, materials);
+        fprintf(file, "%.4d: %d %d %s\n", i + 1, get_side_length_1(testing_meteor), get_side_length_2(testing_meteor), colour_2_string(get_colour(testing_meteor)));
+        release_rectangle(testing_meteor);
+    }
+
+    fclose(file);
+
+    release_materials_table(materials);
+    release_levels_table(levels);
 }
 
 // ------------------------------------------- GETTERS & SETTERS ------------------------------- //
