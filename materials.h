@@ -31,7 +31,7 @@ typedef enum material_type_t {
  * @brief This enumeration defines two possible shapes for a material object:
  */
 typedef enum material_shape_t {
-    RECTANGLE = 1,     /** Represents a square shape. */
+    RECTANGLE,     /** Represents a square shape. */
     SQUARE            /** Represents a rectangular shape. */
 } material_shape_t;
 
