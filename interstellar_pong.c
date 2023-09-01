@@ -343,23 +343,22 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
 static void update_player_to_next_level(game_t *game)
 {
     int level = game->player->level;
-    if (level > game->levels_table->count - 1) {
-        level = game->levels_table->count;
+
+    if (level <= game->levels_table->count - 1) {
+        game->player->stone = game->player->stone - game->levels_table->levels[level].stone_request;
+        game->player->copper = game->player->copper - game->levels_table->levels[level].copper_request;
+        game->player->iron = game->player->iron - game->levels_table->levels[level].iron_request;
+        game->player->gold = game->player->gold - game->levels_table->levels[level].gold_request;
+
+        game->player->hearts = 3;
+        game->enemy->hearts = 3;
+        game->player->level++;
+
+        reset_game_ticks(game);
+        set_objects_to_initial_position(game);
+        game->game_state = STOPPED;
+        increment_game_ticks(game);
     }
-
-    game->player->stone = game->player->stone - game->levels_table->levels[level].stone_request;
-    game->player->copper = game->player->copper - game->levels_table->levels[level].copper_request;
-    game->player->iron = game->player->iron - game->levels_table->levels[level].iron_request;
-    game->player->gold = game->player->gold - game->levels_table->levels[level].gold_request;
-
-    game->player->hearts = 3;
-    game->enemy->hearts = 3;
-    game->player->level++;
-
-    reset_game_ticks(game);
-    set_objects_to_initial_position(game);
-    game->game_state = STOPPED;
-    increment_game_ticks(game);
 }
 
 /**
@@ -379,8 +378,8 @@ static bool check_for_level_update(player_t *player, levels_table_t *levels)
     }
 
     level_row_t level_to_check = levels->levels[level];
-    if (player->stone >= level_to_check.stone_request && player->stone >= level_to_check.stone_request &&
-        player->stone >= level_to_check.stone_request && player->stone >= level_to_check.stone_request) {
+    if (player->stone >= level_to_check.stone_request && player->copper >= level_to_check.copper_request &&
+        player->iron >= level_to_check.iron_request && player->gold >= level_to_check.gold_request) {
         return true;
     }
     return false;
