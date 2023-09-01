@@ -28,6 +28,7 @@ static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
 static int compute_cumulative_distribution(const int *probabilities, int count);
 static void set_meteor_shape(rectangle_t *meteor, materials_table_t *materials);
 static void set_meteor_size(rectangle_t *meteor, materials_table_t *materials);
+static bool check_for_level_update(player_t *player, levels_table_t *levels);
 static bool convert_line_into_level_data(levels_table_t *table, char *line);
 static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game);
 static void update_player_resources(rectangle_t *meteor, player_t *player);
@@ -38,6 +39,7 @@ static material_type_t get_material_type_based_on_index(int index);
 static rectangle_t *find_object(game_t *game, const char *name);
 static material_shape_t get_meteors_shape(rectangle_t *meteor);
 static void set_objects_to_initial_position(game_t *game);
+static void update_player_to_next_level(game_t *game);
 static void test_meteors_generator(int tested_level); // TODO this should not be compiled in release mode
 static void swap_sides(rectangle_t *meteor);
 static void reset_game_ticks(game_t *game);
@@ -203,17 +205,22 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
         increment_game_ticks(game);
     }
 
+    // update meteor if needed
+    if (game->game_ticks > 15) {
+        increment_game_ticks(game);
+        reset_game_ticks(game);
+        set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+        set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+    }
+
     // end game
     if (game->enemy->hearts <= 0 || game->player->hearts <= 0) {
         end_game(game);
     }
 
-    // update meteor if needed
-    if (game->game_ticks > 4) {
-        increment_game_ticks(game);
-        reset_game_ticks(game);
-        set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
-        set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+    // check the level update
+    if (check_for_level_update(game->player, game->levels_table)) {
+        update_player_to_next_level(game);
     }
 
     return game->scene;
@@ -316,6 +323,61 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
     }
 
     return true;
+}
+
+/**
+ * @brief Updates the player to the next level.
+ *
+ * This function updates the game state and player's properties to transition to the next level.
+ * The game state is set to STOPPED to indicate a new level, too.
+ *
+ * @param game A pointer to the game structure.
+ */
+static void update_player_to_next_level(game_t *game)
+{
+    int level = game->player->level;
+    if (level > game->levels_table->count - 1) {
+        level = game->levels_table->count;
+    }
+
+    game->player->stone = game->player->stone - game->levels_table->levels[level].stone_request;
+    game->player->copper = game->player->copper - game->levels_table->levels[level].copper_request;
+    game->player->iron = game->player->iron - game->levels_table->levels[level].iron_request;
+    game->player->gold = game->player->gold - game->levels_table->levels[level].gold_request;
+
+    game->player->hearts = 3;
+    game->enemy->hearts = 3;
+    game->player->level++;
+
+    reset_game_ticks(game);
+    set_objects_to_initial_position(game);
+    game->game_state = STOPPED;
+    increment_game_ticks(game);
+}
+
+/**
+ * @brief Checks if the player can advance to the next level.
+ *
+ * This function checks if the player has collected enough resources to advance to the next level.
+ *
+ * @param player A pointer to the player structure.
+ * @param levels A pointer to the levels table.
+ * @return true if the player can advance to the next level, false otherwise.
+ */
+static bool check_for_level_update(player_t *player, levels_table_t *levels)
+{
+    int level = player->level;
+    if (level > levels->count - 1) {
+        level = levels->count;
+    }
+
+    level_row_t level_to_check = levels->levels[level];
+    if (player->stone >= level_to_check.stone_request && 
+        player->stone >= level_to_check.stone_request &&
+        player->stone >= level_to_check.stone_request && player->stone >= level_to_check.stone_request) {
+        return true;
+    }
+    return false;
 }
 
 /**
