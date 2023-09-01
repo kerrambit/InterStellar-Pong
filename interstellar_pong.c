@@ -374,7 +374,7 @@ static bool check_for_level_update(player_t *player, levels_table_t *levels)
 {
     int level = player->level;
     if (level > levels->count - 1) {
-        level = levels->count;
+        level = levels->count - 1;
     }
 
     level_row_t level_to_check = levels->levels[level];
