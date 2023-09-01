@@ -13,13 +13,13 @@
 #define ENEMY_INIT_X_COORD 5
 #define ENEMY_INIT_Y_COORD 5
 
-#define SMALL_METEOR_SIZE 2
-#define BIG_METEOR_SIZE 3
+#define SMALL_METEOR_SIZE 1
+#define BIG_METEOR_SIZE 2
 
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
-static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
-static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials);
+static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t width, px_t height, px_t x_speed, px_t y_speed, colour_t colour, const char *name);
+static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials, int width, int height);
 static material_type_t count_meteor_material_from_level(level_row_t level);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
 static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter);
@@ -39,6 +39,8 @@ static rectangle_t *find_object(game_t *game, const char *name);
 static material_shape_t get_meteors_shape(rectangle_t *meteor);
 static void set_objects_to_initial_position(game_t *game);
 static void test_meteors_generator(int tested_level); // TODO this should not be compiled in release mode
+static void swap_sides(rectangle_t *meteor);
+static void reset_game_ticks(game_t *game);
 static void move_ball(rectangle_t *ball);
 
 static int get_width(game_t *game);
@@ -52,13 +54,13 @@ static void increment_game_ticks(game_t *game);
 static int get_x_position(rectangle_t *object);
 static int get_y_position(rectangle_t *object);
 static colour_t get_colour(rectangle_t *object);
-static int get_side_length_1(rectangle_t *object);
-static int get_side_length_2(rectangle_t *object);
+static int get_rectangle_width(rectangle_t *object);
+static int get_rectangle_height(rectangle_t *object);
 static void set_x_speed(rectangle_t *object, int speed);
 static void set_y_speed(rectangle_t *object, int speed);
 static void set_colour(rectangle_t *object, colour_t colour);
-static void set_side_length_1(rectangle_t *object, px_t size);
-static void set_side_length_2(rectangle_t *object, px_t size);
+static void set_rectangle_width(rectangle_t *object, px_t size);
+static void set_rectangle_height(rectangle_t *object, px_t size);
 static void set_x_position(rectangle_t *object, px_t position);
 static void set_y_position(rectangle_t *object, px_t position);
 
@@ -161,8 +163,8 @@ scene_t *init_scene(game_t *game)
 
     game->scene = scene;
 
-    set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table);
-    set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table);
+    set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+    set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
 
     return game->scene;
 }
@@ -206,6 +208,14 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
         end_game(game);
     }
 
+    // update meteor if needed
+    if (game->game_ticks > 4) {
+        increment_game_ticks(game);
+        reset_game_ticks(game);
+        set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+        set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+    }
+
     return game->scene;
 }
 
@@ -221,8 +231,8 @@ void handle_event(game_t *game, char c)
     } else if (KEYBOARD_PRESSED(c, 's') || KEYBOARD_PRESSED(c, 'S')) {
 
         set_y_position(find_object(game, "player"), get_y_position(find_object(game, "player")) + 2);
-        if (get_y_position(find_object(game, "player")) > game->height - get_side_length_2(find_object(game, "player"))) {
-            set_y_position(find_object(game, "player"), game->height - get_side_length_2(find_object(game, "player")));
+        if (get_y_position(find_object(game, "player")) > game->height - get_rectangle_height(find_object(game, "player"))) {
+            set_y_position(find_object(game, "player"), game->height - get_rectangle_height(find_object(game, "player")));
         }
 
     } else if (KEYBOARD_PRESSED(c, 'q') || KEYBOARD_PRESSED(c, 'Q')) {
@@ -309,6 +319,23 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
 }
 
 /**
+ * @brief Resets the game's tick count.
+ *
+ * This function resets the game's tick count. If the current tick count is even,
+ * it sets the tick count to -1. Otherwise, it sets it to 0.
+ *
+ * @param game A pointer to the game structure.
+ */
+static void reset_game_ticks(game_t *game)
+{
+    if (get_game_ticks(game) % 2 == 0) {
+        game->game_ticks = -1;
+    } else {
+        game->game_ticks = 0;
+    }
+}
+
+/**
  * @brief Gets the material type based on the given index.
  *
  * This function maps an index to a specific material type.
@@ -357,7 +384,7 @@ static int get_index_based_on_material_type(material_type_t material)
  *
  * @param probabilities An array of probabilities for each element.
  * @param count The number of elements in the probabilities array.
- * @return The chosen index based on probabilities, or -1 if an error occurs.
+ * @return The chosen index based on probabilities (starting on 0), or -1 if an error occurs.
  */
 static int compute_cumulative_distribution(const int *probabilities, int count)
 {
@@ -397,22 +424,42 @@ static void set_meteor_size(rectangle_t *meteor, materials_table_t *materials)
     
     int size_index = compute_cumulative_distribution(probabilities, SIZES_COUNT);
 
-    int size;
+    int width, height;
     switch (size_index)
     {
     case 0:
-        size = 2;
+        width = SMALL_METEOR_SIZE;
+        height = SMALL_METEOR_SIZE;
         break;
     case 1:
-        size = 3;
+        width = BIG_METEOR_SIZE;
+        height = BIG_METEOR_SIZE;
         break;
     default:
-        size = 2;
+        width = SMALL_METEOR_SIZE;
+        height = SMALL_METEOR_SIZE;
         break;
     }
 
-    set_side_length_1(meteor, size);
-    set_side_length_2(meteor, size);
+    set_rectangle_width(meteor, width);
+    set_rectangle_height(meteor, height);
+}
+
+/**
+ * Swaps the sides of a meteor with a given probability 50%.
+ *
+ * @param meteor A pointer to the meteor whose sides may be swapped.
+ */
+static void swap_sides(rectangle_t *meteor)
+{
+    int probabilities[2] = { 50, 50 };
+    int index = compute_cumulative_distribution(probabilities, 2);
+
+    if (index == 0) {
+        int lengt_1 = get_rectangle_width(meteor);
+        set_rectangle_width(meteor, get_rectangle_height(meteor));
+        set_rectangle_height(meteor, lengt_1);
+    }
 }
 
 /**
@@ -433,19 +480,11 @@ static void set_meteor_shape(rectangle_t *meteor, materials_table_t *materials)
 
     int size_index = compute_cumulative_distribution(probabilities, SHAPE_COUNT);
 
-    bool is_meteor_big = false;
-    if (get_side_length_1(meteor) == BIG_METEOR_SIZE) {
-        is_meteor_big = true;
-    }
-
     switch (size_index)
     {
     case RECTANGLE:
-        if (is_meteor_big) {
-            set_side_length_1(meteor, 2);
-        } else {
-            set_side_length_2(meteor, 1);
-        }
+        set_rectangle_width(meteor, (get_rectangle_width(meteor) - 1 <= 0) ? 2 : (get_rectangle_width(meteor)));
+        swap_sides(meteor);
         break;
     case SQUARE:
         break;
@@ -481,16 +520,17 @@ static material_type_t count_meteor_material_from_level(level_row_t level)
  * @param levels Pointer to the levels_table_t structure containing level data.
  * @param materials Pointer to the materials_table_t structure containing material data.
  */
-static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials)
+static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials, int width, int height)
 {
     if (player_level > levels->count - 1) {
         player_level = levels->count - 1;
     }
 
+    set_x_position(meteor, (rand() % (width - 10)) + 5);
+    set_y_position(meteor, (rand() % (height - 10)) + 5);
     set_colour(meteor, (colour_t)count_meteor_material_from_level(levels->levels[player_level]));
     set_meteor_size(meteor, materials);
     set_meteor_shape(meteor, materials);
-    fprintf(stderr, "Generated meteor: size_1: %d, size_2: %d, material: %s\n", meteor->side_length_1,meteor->side_length_2, convert_material_type_2_string((material_type_t)meteor->colour));
 }
 
 /**
@@ -664,7 +704,7 @@ static void bounce_ball(rectangle_t *ball, px_t width, px_t height)
     if(get_x_position(ball) >= width - 2 || get_x_position(ball) <= 0) {
         set_x_speed(ball, get_x_speed(ball) * (-1));
     }
-    if (get_y_position(ball) >= height - get_side_length_2(ball) || get_y_position(ball) <= 0) {
+    if (get_y_position(ball) >= height - get_rectangle_height(ball) || get_y_position(ball) <= 0) {
         set_y_speed(ball, get_y_speed(ball) * (-1));
     }     
 }
@@ -678,8 +718,8 @@ static void bounce_ball(rectangle_t *ball, px_t width, px_t height)
  */
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height)
 {
-    int ball_center = get_y_position(ball) + (get_side_length_2(ball) / 2);
-    int paddle_center = get_y_position(enemy) + (get_side_length_2(enemy) / 2);
+    int ball_center = get_y_position(ball) + (get_rectangle_height(ball) / 2);
+    int paddle_center = get_y_position(enemy) + (get_rectangle_height(enemy) / 2);
     int paddle_speed = (abs(ball_center - paddle_center) < 9) ? 1 : 2;
 
     if (ball_center < paddle_center) {
@@ -692,8 +732,8 @@ static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball
 
     if (get_y_position(enemy) < 0) {
         set_y_position(enemy, 0);
-    } else if (get_y_position(enemy) + get_side_length_2(enemy) > height) {
-        set_y_position(enemy, height - get_side_length_2(enemy));
+    } else if (get_y_position(enemy) + get_rectangle_height(enemy) > height) {
+        set_y_position(enemy, height - get_rectangle_height(enemy));
     }
 }
 
@@ -717,8 +757,8 @@ static bool detect_collision(ID_t collision_ID, rectangle_t *object)
  */
 static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle)
 {
-    int paddle_center = get_y_position(paddle) + (get_side_length_2(paddle) / 2);
-    int ball_center = get_y_position(ball) + (get_side_length_2(ball) / 2);
+    int paddle_center = get_y_position(paddle) + (get_rectangle_height(paddle) / 2);
+    int ball_center = get_y_position(ball) + (get_rectangle_height(ball) / 2);
     int vertical_distance = ball_center - paddle_center;
 
     if (get_y_speed(ball) == 0) {
@@ -748,20 +788,21 @@ static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game)
     bool is_in_bound = true;
     if (get_x_position(ball) <= 2) {
         is_in_bound = false;
-    } else if (get_x_position(ball) + get_side_length_1(ball) >= game->width) {
+    } else if (get_x_position(ball) + get_rectangle_width(ball) >= game->width) {
         is_in_bound = false;
     }
 
     if (!is_in_bound) {
+
         if (get_game_ticks(game) % 2 == 0) {
             game->player->hearts--;
-            set_x_speed(find_object(game, "ball"), 2);
-            game->game_ticks = -1;
+            set_x_speed(ball, 2);
         } else {
             game->enemy->hearts--;
-            set_x_speed(find_object(game, "ball"), -2);
-            game->game_ticks = 0;
+            set_x_speed(ball, -2);
         }
+
+        reset_game_ticks(game);
         set_objects_to_initial_position(game);
         game->game_state = STOPPED;
     }
@@ -803,7 +844,7 @@ static void set_objects_to_initial_position(game_t *game)
  */
 static material_shape_t get_meteors_shape(rectangle_t *meteor)
 {
-    if (get_side_length_1(meteor) == get_side_length_2(meteor)) {
+    if (get_rectangle_width(meteor) == get_rectangle_height(meteor)) {
         return SQUARE;
     }
     return RECTANGLE;
@@ -823,7 +864,7 @@ static void update_player_resources(rectangle_t *meteor, player_t *player)
 {
     int increment;
 
-    if (get_side_length_1(meteor) == SMALL_METEOR_SIZE) {
+    if (get_rectangle_width(meteor) == SMALL_METEOR_SIZE) {
         increment = 1;
     } else {
         increment = 3;
@@ -832,9 +873,6 @@ static void update_player_resources(rectangle_t *meteor, player_t *player)
     if (get_meteors_shape(meteor) == SQUARE) {
         increment++;
     }
-
-    fprintf(stderr, "Collected meteor: size_1: %d, size_2: %d, material: %s; ", meteor->side_length_1,meteor->side_length_2, convert_material_type_2_string((material_type_t)meteor->colour));
-    fprintf(stderr, "resources were updated by %d\n", increment);
 
     switch (meteor->colour)
     {
@@ -867,9 +905,9 @@ static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game)
         update_player_resources(meteor, game->player);
     }
 
-    set_meteor_properties(meteor, game->player->level, game->levels_table, game->materials_table);
-    set_x_position(meteor, (rand() % (get_width(game) - 10)) + 5);
-    set_y_position(meteor, (rand() % (get_height(game) - 10)) + 5);
+    set_meteor_properties(meteor, game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+    increment_game_ticks(game);
+    reset_game_ticks(game);
 }
 
 /**
@@ -903,9 +941,9 @@ static rectangle_t *find_object(game_t *game, const char *name)
  * @param name The name of the rectangle object.
  * @return True if creation and addition were successful, false otherwise.
  */
-static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, px_t x_speed, px_t y_speed, colour_t colour, const char *name)
+static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x, px_t position_y, px_t width, px_t height, px_t x_speed, px_t y_speed, colour_t colour, const char *name)
 {
-    rectangle_t *object = create_rectangle(position_x, position_y, side_length_1, side_length_2, x_speed, y_speed, colour, name);
+    rectangle_t *object = create_rectangle(position_x, position_y, width, height, x_speed, y_speed, colour, name);
     if (object == NULL) {
         resolve_error(MEM_ALOC_FAILURE);
         return false;
@@ -954,7 +992,7 @@ static void test_meteors_generator(int tested_level)
         set_colour(testing_meteor, (colour_t)count_meteor_material_from_level(levels->levels[tested_level]));
         set_meteor_size(testing_meteor, materials);
         set_meteor_shape(testing_meteor, materials);
-        fprintf(file, "%.4d: %d %d %s\n", i + 1, get_side_length_1(testing_meteor), get_side_length_2(testing_meteor), colour_2_string(get_colour(testing_meteor)));
+        fprintf(file, "%.4d: %d %d %s\n", i + 1, get_rectangle_width(testing_meteor), get_rectangle_height(testing_meteor), colour_2_string(get_colour(testing_meteor)));
         release_rectangle(testing_meteor);
     }
 
@@ -1071,9 +1109,9 @@ static void set_y_position(rectangle_t *object, px_t position)
  * @param object The rectangle object to query.
  * @return The length of the first side of the object.
  */
-static int get_side_length_1(rectangle_t *object)
+static int get_rectangle_width(rectangle_t *object)
 {
-    return object->side_length_1;
+    return object->width / 2;
 }
 
 /**
@@ -1082,9 +1120,9 @@ static int get_side_length_1(rectangle_t *object)
  * @param object A pointer to the rectangle object whose first side length is to be set.
  * @param size The value to set as the first side length.
  */
-static void set_side_length_1(rectangle_t *object, px_t size)
+static void set_rectangle_width(rectangle_t *object, px_t size)
 {
-    object->side_length_1 = size;
+    object->width = size * 2;
 }
 
 /**
@@ -1093,9 +1131,9 @@ static void set_side_length_1(rectangle_t *object, px_t size)
  * @param object A pointer to the rectangle object whose second side length is to be set.
  * @param size The value to set as the second side length.
  */
-static void set_side_length_2(rectangle_t *object, px_t size)
+static void set_rectangle_height(rectangle_t *object, px_t size)
 {
-    object->side_length_2 = size;
+    object->height = size;
 }
 
 /**
@@ -1104,9 +1142,9 @@ static void set_side_length_2(rectangle_t *object, px_t size)
  * @param object The rectangle object to query.
  * @return The length of the second side of the object.
  */
-static int get_side_length_2(rectangle_t *object)
+static int get_rectangle_height(rectangle_t *object)
 {
-    return object->side_length_2;
+    return object->height;
 }
 
 /**
