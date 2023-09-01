@@ -173,35 +173,41 @@ scene_t *init_scene(game_t *game)
 
 scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
 {
-    move_ball(find_object(game, "ball"));
-    bounce_ball(find_object(game, "ball"), game->width, game->height);
-    simulate_enemy_paddle_movement(find_object(game, "enemy"), find_object(game, "ball"), game->height);
+    rectangle_t *ball = find_object(game, "ball");
+    rectangle_t *player = find_object(game, "player");
+    rectangle_t *enemy = find_object(game, "enemy");
+    rectangle_t *meteor_1 = find_object(game, "meteor_1");
+    rectangle_t *meteor_2 = find_object(game, "meteor_2");
+
+    move_ball(ball);
+    bounce_ball(ball, game->width, game->height);
+    simulate_enemy_paddle_movement(enemy, ball, game->height);
 
     // put objects pixel in pixel buffer
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "player"));
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_1"));
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "meteor_2"));
-    (void)compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "enemy"));
+    (void)compute_object_pixels_in_buffer(pixel_buffer, player);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, meteor_1);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, meteor_2);
+    (void)compute_object_pixels_in_buffer(pixel_buffer, enemy);
 
     // collision detection and handling
-    ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, find_object(game, "ball"));
-    if (detect_collision(collision_ID, find_object(game, "player"))) {
+    ID_t collision_ID = compute_object_pixels_in_buffer(pixel_buffer, ball);
+    if (detect_collision(collision_ID, player)) {
         increment_game_ticks(game);
-        handle_ball_and_paddle_collision(find_object(game, "ball"), find_object(game, "player"));
+        handle_ball_and_paddle_collision(ball, player);
     }
-    if (detect_collision(collision_ID, find_object(game, "enemy"))) {
+    if (detect_collision(collision_ID, enemy)) {
         increment_game_ticks(game);
-        handle_ball_and_paddle_collision(find_object(game, "ball"), find_object(game, "enemy"));
+        handle_ball_and_paddle_collision(ball, enemy);
     }
-    if (detect_collision(collision_ID, find_object(game, "meteor_1"))) {
-        handle_ball_and_meteor_collision(find_object(game, "meteor_1"), game);
+    if (detect_collision(collision_ID, meteor_1)) {
+        handle_ball_and_meteor_collision(meteor_1, game);
     }
-    if (detect_collision(collision_ID, find_object(game, "meteor_2"))) {
-        handle_ball_and_meteor_collision(find_object(game, "meteor_2"), game);
+    if (detect_collision(collision_ID, meteor_2)) {
+        handle_ball_and_meteor_collision(meteor_2, game);
     }
 
     // check ball and bouderies
-    if (!check_ball_boundary_collision(find_object(game, "ball"), game)) {
+    if (!check_ball_boundary_collision(ball, game)) {
         increment_game_ticks(game);
     }
 
@@ -209,8 +215,8 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
     if (game->game_ticks > 15) {
         increment_game_ticks(game);
         reset_game_ticks(game);
-        set_meteor_properties(find_object(game, "meteor_1"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
-        set_meteor_properties(find_object(game, "meteor_2"), game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+        set_meteor_properties(meteor_1, game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
+        set_meteor_properties(meteor_2, game->player->level, game->levels_table, game->materials_table, get_width(game), get_height(game));
     }
 
     // end game
@@ -228,18 +234,19 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
 
 void handle_event(game_t *game, char c)
 {
+    rectangle_t *player = find_object(game, "player");
     if (KEYBOARD_PRESSED(c, 'w') || KEYBOARD_PRESSED(c, 'W')) {
 
-        set_y_position(find_object(game, "player"), get_y_position(find_object(game, "player")) - 2);
-        if (get_y_position(find_object(game, "player")) - 2 < 0) {
-            set_y_position(find_object(game, "player"), 0);
+        set_y_position(player, get_y_position(player) - 2);
+        if (get_y_position(player) - 2 < 0) {
+            set_y_position(player, 0);
         }
 
     } else if (KEYBOARD_PRESSED(c, 's') || KEYBOARD_PRESSED(c, 'S')) {
 
-        set_y_position(find_object(game, "player"), get_y_position(find_object(game, "player")) + 2);
-        if (get_y_position(find_object(game, "player")) > game->height - get_rectangle_height(find_object(game, "player"))) {
-            set_y_position(find_object(game, "player"), game->height - get_rectangle_height(find_object(game, "player")));
+        set_y_position(player, get_y_position(player) + 2);
+        if (get_y_position(player) > game->height - get_rectangle_height(player)) {
+            set_y_position(player, game->height - get_rectangle_height(player));
         }
 
     } else if (KEYBOARD_PRESSED(c, 'q') || KEYBOARD_PRESSED(c, 'Q')) {
@@ -372,8 +379,7 @@ static bool check_for_level_update(player_t *player, levels_table_t *levels)
     }
 
     level_row_t level_to_check = levels->levels[level];
-    if (player->stone >= level_to_check.stone_request && 
-        player->stone >= level_to_check.stone_request &&
+    if (player->stone >= level_to_check.stone_request && player->stone >= level_to_check.stone_request &&
         player->stone >= level_to_check.stone_request && player->stone >= level_to_check.stone_request) {
         return true;
     }
@@ -882,17 +888,20 @@ static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game)
  */
 static void set_objects_to_initial_position(game_t *game)
 {
-    set_x_position(find_object(game, "ball"), BALL_INIT_X_COORD);
-    set_y_position(find_object(game, "ball"), BALL_INIT_Y_COORD);
-    set_y_speed(find_object(game, "ball"), 1);
+    rectangle_t *ball = find_object(game, "ball");
+    set_x_position(ball, BALL_INIT_X_COORD);
+    set_y_position(ball, BALL_INIT_Y_COORD);
+    set_y_speed(ball, 1);
 
-    set_x_position(find_object(game, "player"), PLAYER_INIT_X_COORD);
-    set_y_position(find_object(game, "player"), PLAYER_INIT_Y_COORD);
-    set_y_speed(find_object(game, "player"), 0);
+    rectangle_t *player = find_object(game, "player");
+    set_x_position(player, PLAYER_INIT_X_COORD);
+    set_y_position(player, PLAYER_INIT_Y_COORD);
+    set_y_speed(player, 0);
 
-    set_x_position(find_object(game, "enemy"), ENEMY_INIT_X_COORD);
-    set_y_position(find_object(game, "enemy"), ENEMY_INIT_Y_COORD);
-    set_y_speed(find_object(game, "enemy"), 0);
+    rectangle_t *enemy = find_object(game, "enemy");
+    set_x_position(enemy, ENEMY_INIT_X_COORD);
+    set_y_position(enemy, ENEMY_INIT_Y_COORD);
+    set_y_speed(enemy, 0);
 }
 
 /**
