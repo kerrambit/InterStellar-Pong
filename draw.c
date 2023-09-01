@@ -422,23 +422,24 @@ const char* colour_2_string(colour_t colour)
 {
     switch (colour)
     {
-        case BLACK:         return "black"; break;
-        case WHITE:         return "white"; break;
-        case RED:           return "red"; break;
-        case GREEN:         return "green"; break;
-        case BLUE:          return "blue"; break;
-        case YELLOW:        return "yellow"; break;
-        case MAGENTA:       return "magenta"; break;
-        case CYAN:          return "cyan"; break;
-        case LIGHT_GRAY:    return "light_gray"; break;
-        case DARK_GRAY:     return "dark_gray"; break;
-        case LIGHT_RED:     return "light_red"; break;
-        case LIGHT_GREEN:   return "light_green"; break;
-        case LIGHT_BLUE:    return "light_blue"; break;
-        case LIGHT_YELLOW:  return "light_yellow"; break;
-        case LIGHT_MAGENTA: return "light_magenta"; break;
-        case LIGHT_CYAN:    return "light_cyan"; break;
-        default:            return "unknown"; break;
+        case BLACK:         return "black";
+        case WHITE:         return "white";
+        case RED:           return "red";
+        case GREEN:         return "green";
+        case BLUE:          return "blue";
+        case YELLOW:        return "yellow";
+        case ORANGE:        return "orange";
+        case MAGENTA:       return "magenta";
+        case CYAN:          return "cyan";
+        case LIGHT_GRAY:    return "light_gray";
+        case DARK_GRAY:     return "dark_gray";
+        case LIGHT_RED:     return "light_red";
+        case LIGHT_GREEN:   return "light_green";
+        case LIGHT_BLUE:    return "light_blue";
+        case LIGHT_YELLOW:  return "light_yellow";
+        case LIGHT_MAGENTA: return "light_magenta";
+        case LIGHT_CYAN:    return "light_cyan";
+        default:            return "unknown";
     }
 }
 
