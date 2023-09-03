@@ -948,10 +948,10 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
 
-    char *game_collected = create_string("In the game you collected: %d STONE, %d COPPER, %d IRON and %d GOLD.", (updated_player->stone - data->player_choosen_to_game->stone <= 0) ? updated_player->stone : updated_player->stone - data->player_choosen_to_game->stone,
-                                                                                                                 (updated_player->copper - data->player_choosen_to_game->copper <= 0) ? updated_player->copper : updated_player->copper - data->player_choosen_to_game->copper,
-                                                                                                                 (updated_player->iron - data->player_choosen_to_game->iron <= 0) ? updated_player->iron : updated_player->iron - data->player_choosen_to_game->iron,
-                                                                                                                 (updated_player->gold - data->player_choosen_to_game->gold <= 0) ? updated_player->gold : updated_player->gold - data->player_choosen_to_game->gold);
+    char *game_collected = create_string("In the game you collected: %d STONE, %d COPPER, %d IRON and %d GOLD.", (updated_player->stone - data->player_choosen_to_game->stone < 0) ? updated_player->stone : updated_player->stone - data->player_choosen_to_game->stone,
+                                                                                                                 (updated_player->copper - data->player_choosen_to_game->copper < 0) ? updated_player->copper : updated_player->copper - data->player_choosen_to_game->copper,
+                                                                                                                 (updated_player->iron - data->player_choosen_to_game->iron < 0) ? updated_player->iron : updated_player->iron - data->player_choosen_to_game->iron,
+                                                                                                                 (updated_player->gold - data->player_choosen_to_game->gold < 0) ? updated_player->gold : updated_player->gold - data->player_choosen_to_game->gold);
     if (game_collected == NULL) {
         release_player(updated_player);
         release_player(data->player_choosen_to_game);
