@@ -86,7 +86,25 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
         return NO_PAGE;
     // ----------------------------------------------------------------------------------------- //
     case AFTER_GAME_PAGE:
-        if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
+        if (COMMAND_EQ(command, "p", "P", "play again", "PLAY AGAIN")) {
+            if (data->player_choosen_to_game == NULL) {
+                return GAME_PAGE;
+            }
+            char *name = strdup(data->player_choosen_to_game->name);
+            if (name == NULL) {
+                release_player(data->player_choosen_to_game);
+                data->player_choosen_to_game = NULL;
+                resolve_error(MEM_ALOC_FAILURE);
+                return ERROR_PAGE;
+            }
+            release_player(data->player_choosen_to_game);
+            data->player_choosen_to_game = NULL;
+            if ((data->player_choosen_to_game = find_player(name, PLAYERS_DATA_PATH)) != NULL) {
+                free(name);
+                return GAME_PAGE;
+            }
+            free(name);
+        } else if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
             release_player(data->player_choosen_to_game);
             data->player_choosen_to_game = NULL;
             return choose_pregame_page(data);
@@ -861,9 +879,10 @@ static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inn
     put_empty_row(1);
     put_text("No statistics available for the game without the player.", width, CENTER);
     put_empty_row(3);
+    put_text("PLAY AGAIN [P]", width, CENTER);
     put_text("NEW GAME [N]", width, CENTER);
     put_text("QUIT [Q]", width, CENTER);
-    put_empty_row(3);
+    put_empty_row(2);
 
     if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
@@ -980,9 +999,10 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
     put_text(game_collected, width, CENTER);
     put_text(level_info, width, CENTER);
     put_empty_row(2);
+    put_text("PLAY AGAIN [P]", width, CENTER);
     put_text("NEW GAME [N]", width, CENTER);
     put_text("QUIT [Q]", width, CENTER);
-    put_empty_row(2);
+    put_empty_row(1);
 
     release_player(updated_player);
     free(game_collected);
