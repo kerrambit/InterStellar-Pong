@@ -55,8 +55,7 @@ void set_cursor_at_beginning_of_window(void)
 void set_cursor_at_beginning_of_canvas(void)
 {
     set_cursor_at_beginning_of_window();
-    put_empty_row(1);
-    CHAR_RIGHT();
+    ROW_DOWN();
 }
 
 void hide_cursor()
