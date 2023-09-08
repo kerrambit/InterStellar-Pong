@@ -3,6 +3,11 @@
 Welcome to InterStellar Pong, a simple terminal-based game inspired by the classic Pong with an exciting twist!
 In this game, you'll not only play Pong but also collect valuable resources like stone, iron, copper, and gold to progress through higher levels.
 
+![Gameplay](docs/InterstellarPongPIC1.png)
+![Players gallery](docs/InterstellarPongPIC2.png)
+![Creating new player](docs/InterstellarPongPIC3.png)
+![Game and player statistics](docs/InterstellarPongPIC4.png)
+
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │                                                                               │
@@ -57,7 +62,7 @@ In this game, you'll not only play Pong but also collect valuable resources like
 - Run:
 
    ```bash
-   chmod +x launch.sh && ./lauch.sh
+   chmod +x launch.sh && ./launch.sh
    
 - You can also run the game in debugging mode. Just like this:
     ```bash
