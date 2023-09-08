@@ -4,39 +4,19 @@ Welcome to InterStellar Pong, a simple terminal-based game inspired by the class
 In this game, you'll not only play Pong but also collect valuable resources like stone, iron, copper, and gold to progress through higher levels.
 
 ![Gameplay](docs/InterstellarPongPIC1.png)
+
+You can also create and play with different players' accounts!
+
 ![Players gallery](docs/InterstellarPongPIC2.png)
+
+Creating new player is as easy as it can be.
+
 ![Creating new player](docs/InterstellarPongPIC3.png)
+
+Your progress through the game is being watched so you know where you are.
+
 ![Game and player statistics](docs/InterstellarPongPIC4.png)
 
-```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                                                                               │
-│                                                                               │
-│                                                                               │
-│                                                                               │
-│                                                                               │
-│                                  ████                                    ██   │
-│                                  ████                                    ██   │
-│                                                                          ██   │
-│                                                                          ██   │
-│                                                                          ██   │
-│                                                                               │
-│                                                                               │
-│                                                                               │
-│                                                                               │
-│                                                                               │
-│                                       ██                                      │
-│    ██                                                                         │
-│    ██                                                                         │
-│    ██                                                                         │
-│    ██        ██                                                               │
-│    ██                                                                         │
-│                                                                               │
-└───────────────────────────────────────────────────────────────────────────────┘
- Enemy hearts (2/3):  ♥ ♥                             Your hearts (3/3):  ♥ ♥ ♥
-                                    Resources:
-                STONE(45/50) COPPER(28/30) IRON(17/25) GOLD(3/20)
-```
 
 ## Features
 
