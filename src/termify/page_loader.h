@@ -12,7 +12,7 @@
 #define PAGE_LOADER_H
 
 #include "draw.h"
-#include "player.h"
+#include "../interstellar-pong-implementation/player.h"
 #include "terminal.h"
 
 /**

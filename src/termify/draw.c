@@ -55,8 +55,7 @@ void set_cursor_at_beginning_of_window(void)
 void set_cursor_at_beginning_of_canvas(void)
 {
     set_cursor_at_beginning_of_window();
-    put_empty_row(1);
-    CHAR_RIGHT();
+    ROW_DOWN();
 }
 
 void hide_cursor()
@@ -317,6 +316,8 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene)
                     printf("\033[0;94m█\033[0m"); break;
                 case YELLOW:
                     printf("\033[0;93m█\033[0m"); break;
+                case ORANGE:
+                    printf("\033[38;5;208m█\033[0m"); break; 
                 case MAGENTA:
                     printf("\033[0;95m█\033[0m"); break;
                 case CYAN:
@@ -359,8 +360,8 @@ ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *
         return UNDEFINIED_ID;
     }
 
-    for (px_t i = object->position_y; i < object->position_y + object->side_length_2; ++i) {
-        for (px_t j = object->position_x; j < object->position_x + object->side_length_1; ++j) {
+    for (px_t i = object->position_y; i < object->position_y + object->height; ++i) {
+        for (px_t j = object->position_x; j < object->position_x + object->width; ++j) {
 
             if ((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
                 if (pixel_buffer->buff[i * pixel_buffer->width + j] != UNDEFINIED_ID) {
@@ -384,7 +385,7 @@ void reset_pixel_buffer(pixel_buffer_t *pixel_buffer)
     }
 }
 
-rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length_1, px_t side_length_2, int x_speed, int y_speed, colour_t colour, const char *name)
+rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t width, px_t height, int x_speed, int y_speed, colour_t colour, const char *name)
 {
     rectangle_t *rectangle = malloc(sizeof(rectangle_t));
     if (rectangle == NULL) {
@@ -394,7 +395,7 @@ rectangle_t *create_rectangle(px_t position_x, px_t position_y, px_t side_length
     rectangle->ID = generate_id();
     rectangle->position_x = position_x; rectangle->position_y = position_y;
     rectangle->x_speed = x_speed; rectangle->y_speed = y_speed;
-    rectangle->side_length_1 = side_length_1 * 2; rectangle->side_length_2 = side_length_2;
+    rectangle->width = width * 2; rectangle->height = height;
     rectangle->colour = colour;
     rectangle->name = malloc(strlen(name) + 1);
 
@@ -420,23 +421,24 @@ const char* colour_2_string(colour_t colour)
 {
     switch (colour)
     {
-        case BLACK:         return "black"; break;
-        case WHITE:         return "white"; break;
-        case RED:           return "red"; break;
-        case GREEN:         return "green"; break;
-        case BLUE:          return "blue"; break;
-        case YELLOW:        return "yellow"; break;
-        case MAGENTA:       return "magenta"; break;
-        case CYAN:          return "cyan"; break;
-        case LIGHT_GRAY:    return "light_gray"; break;
-        case DARK_GRAY:     return "dark_gray"; break;
-        case LIGHT_RED:     return "light_red"; break;
-        case LIGHT_GREEN:   return "light_green"; break;
-        case LIGHT_BLUE:    return "light_blue"; break;
-        case LIGHT_YELLOW:  return "light_yellow"; break;
-        case LIGHT_MAGENTA: return "light_magenta"; break;
-        case LIGHT_CYAN:    return "light_cyan"; break;
-        default:            return "unknown"; break;
+        case BLACK:         return "black";
+        case WHITE:         return "white";
+        case RED:           return "red";
+        case GREEN:         return "green";
+        case BLUE:          return "blue";
+        case YELLOW:        return "yellow";
+        case ORANGE:        return "orange";
+        case MAGENTA:       return "magenta";
+        case CYAN:          return "cyan";
+        case LIGHT_GRAY:    return "light_gray";
+        case DARK_GRAY:     return "dark_gray";
+        case LIGHT_RED:     return "light_red";
+        case LIGHT_GREEN:   return "light_green";
+        case LIGHT_BLUE:    return "light_blue";
+        case LIGHT_YELLOW:  return "light_yellow";
+        case LIGHT_MAGENTA: return "light_magenta";
+        case LIGHT_CYAN:    return "light_cyan";
+        default:            return "unknown";
     }
 }
 

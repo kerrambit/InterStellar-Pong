@@ -34,6 +34,24 @@ typedef enum terminal_output_mode_t {
 } terminal_output_mode_t;
 
 /**
+ * @brief A structure to store cursor information for a terminal.
+ * With every saved command, this structure holds data about its position in the file (that is <cursor_offset>) and its length.
+ */
+typedef struct terminal_cursor_duo_t {
+    int cursor_offset;  /** The cursor offset. */
+    int line_length;    /** The length of the line. */
+} terminal_cursor_duo_t;
+
+/**
+ * @brief A structure to store terminal file cursor storage. All commands positions in the file are stored here.
+ */
+typedef struct terminal_file_cursor_storage_t {
+    terminal_cursor_duo_t *storage; /** An array of cursor duos. */
+    int count;                      /** The current number of cursor duos in the array. */
+    int length;                     /** The allocated length of the cursor duo array. */
+} terminal_file_cursor_storage_t;
+
+/**
  * @struct terminal_data_t
  * @brief Data structure to hold terminal-related information.
  *
@@ -48,6 +66,9 @@ typedef struct terminal_data_t {
     terminal_output_mode_t terminal_default_mess_mode;              /** Output mode for the default terminal message. */
     char *terminal_special_flag_default_mess;                       /** Default terminal message with special flag. Shown if the variable <special_flag> in render_terminal() function is set to true. */
     terminal_output_mode_t terminal_spacial_flag_default_mess_mode; /** Output mode for the default terminal message with special flag. */
+    terminal_file_cursor_storage_t *cursors_storage;                /** A structure to store terminal file cursor storage. */
+    int curr_line;                                                  /** Current line in the file. */
+    int lines_count_in_file;                                        /** Number of lines in the terminal file. */
 } terminal_data_t;
 
 /**

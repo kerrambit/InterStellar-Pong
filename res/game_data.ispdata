@@ -1,0 +1,37 @@
+# Description:
+# This file is devided into 2 parts: first part describes the material table and the later
+# represents individual levels. Lines starting with '#' are marked as comments and are ignored. The empty lines are ignored, too.
+
+# Information about materials:
+# The line describing the material contains 4 numbers devided by ';'. First 2 number states the probability
+# concerning the size. First number is understood as probability of meteor of given material to be size 1px_t,
+# the latter as 2px_t. The later 2 numbers represents the probability of shape of the given mateor (rectangle and square respectively).
+
+# STONE
+25;75;25;75
+
+# COPPER
+50;50;50;50
+
+# IRON
+75;25;75;25
+
+# GOLD
+100;0;90;10
+
+# Information about levels:
+# The line describing one level contains 8 numbers devided by ';'. First 4 number states how many
+# resources the user must collect to finish the level. The later 4 numbers represents the probability
+# of spawning the given material. All materials are ordered as STONE;COPPER;IRON;GOLD.
+
+# LVL0: Stone Age
+50;0;0;0;100;0;0;0
+
+# LVL1: Copper Conquest
+50;20;0;0;75;25;0;0
+
+# LVL2: Iron Odyssey
+50;30;20;0;65;20;15;0
+
+# LVL3: Golden Epoch
+50;30;25;20;50;25;15;10

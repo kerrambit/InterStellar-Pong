@@ -15,11 +15,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "draw.h"
-#include "errors.h"
-#include "page_loader.h"
+#include "../termify/draw.h"
+#include "../termify/errors.h"
+#include "levels.h"
+#include "materials.h"
+#include "../termify/page_loader.h"
 #include "player.h"
-#include "utils.h"
+#include "../termify/utils.h"
 
 /**
  * @brief Represents the possible states of a game. It is used to indicate whether the game is currently running or stopped (or terminated). 
@@ -35,13 +37,15 @@ typedef enum game_state_t {
  * @brief Represents the game of Interstellar Pong. Holds general data about the current instance of the game.
  */
 typedef struct game_t {
-    scene_t *scene;          /** Pointer to the game scene. */
-    player_t *player;        /** Pointer to the player object. */
-    player_t *enemy;         /** Pointer to the enemy object. */
-    px_t width;              /** Width of the game screen. */
-    px_t height;             /** Height of the game screen. */
-    game_state_t game_state; /** Current state of the game. */
-    int game_ticks;          /** Represents the number of ball bounces between players. */
+    scene_t *scene;                       /** Pointer to the game scene. */
+    player_t *player;                     /** Pointer to the player object. */
+    player_t *enemy;                      /** Pointer to the enemy object. */
+    px_t width;                           /** Width of the game screen. */
+    px_t height;                          /** Height of the game screen. */
+    game_state_t game_state;              /** Current state of the game. */
+    int game_ticks;                       /** Represents the number of ball bounces between players. */
+    materials_table_t *materials_table;   /** Pointer to the table containing data about materials. */
+    levels_table_t *levels_table;         /** Pointer to the table containing data about game levels. */
 } game_t;
 
 /**
@@ -115,5 +119,15 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer);
  * @param c The character representing the pressed key.
  */
 void handle_event(game_t *game, char c);
+
+/**
+ * @brief Loads external data from a file into materials and levels tables.
+ * 
+ * @param file_path The path to the file containing the external data.
+ * @param materials_table A double pointer to the materials table.
+ * @param levels_table A double pointer to the levels table.
+ * @return true if the loading is successful, false otherwise.
+ */
+bool load_extern_game_data(const char *file_path, materials_table_t **materials_table, levels_table_t **levels_table);
 
 #endif

@@ -8,9 +8,10 @@
 
 #include "draw.h"
 #include "errors.h"
-#include "interstellar_pong.h"
+#include "../interstellar-pong-implementation/interstellar_pong.h"
 #include "page_loader.h"
-#include "player.h"
+#include "../interstellar-pong-implementation/paths.h"
+#include "../interstellar-pong-implementation/player.h"
 #include "terminal.h"
 #include "utils.h"
 
@@ -18,7 +19,6 @@
 
 #define COMMAND_EQ(command, ch, CH, word, WORD) (STR_EQ(command, ch) || STR_EQ(command, CH) || STR_EQ(command, word) || STR_EQ(command, WORD))
 #define GAME_WIDTH 80
-#define PLAYERS_DATA_PATH "players.data"
 
 // ---------------------------------------- STATIC DECLARATIONS--------------------------------- //
 
@@ -35,7 +35,9 @@ static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t 
 
 static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
+static void display_resources(player_t *player, levels_table_t *levels, int width);
 static int update_players_stats(player_t *target_player, const char *file_path);
+static const char *create_resources_string(player_t *player, level_row_t level);
 static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
 static char *create_player_string(player_t *player, bool end_with_newline);
 static void display_hearts(const char *player_name, int number_of_hearts);
@@ -44,10 +46,9 @@ static bool check_name(const char *name, page_loader_inner_data_t *data);
 static player_t *find_player(const char *name, const char *file_path);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static page_t choose_pregame_page(page_loader_inner_data_t *data);
+static const char *create_level_info_string(player_t *player);
 static players_array_t *load_players(const char* file_path);
-static void display_resources(player_t *player, int width);
 static void put_game_logo(px_t width, position_t position);
-static char *create_string(const char *format, ...);
 static void display_live_stats(game_t *game);
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
@@ -85,7 +86,25 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
         return NO_PAGE;
     // ----------------------------------------------------------------------------------------- //
     case AFTER_GAME_PAGE:
-        if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
+        if (COMMAND_EQ(command, "p", "P", "play again", "PLAY AGAIN")) {
+            if (data->player_choosen_to_game == NULL) {
+                return GAME_PAGE;
+            }
+            char *name = strdup(data->player_choosen_to_game->name);
+            if (name == NULL) {
+                release_player(data->player_choosen_to_game);
+                data->player_choosen_to_game = NULL;
+                resolve_error(MEM_ALOC_FAILURE);
+                return ERROR_PAGE;
+            }
+            release_player(data->player_choosen_to_game);
+            data->player_choosen_to_game = NULL;
+            if ((data->player_choosen_to_game = find_player(name, PLAYERS_DATA_PATH)) != NULL) {
+                free(name);
+                return GAME_PAGE;
+            }
+            free(name);
+        } else if (COMMAND_EQ(command, "n", "N", "new game", "NEW GAME")) {
             release_player(data->player_choosen_to_game);
             data->player_choosen_to_game = NULL;
             return choose_pregame_page(data);
@@ -848,35 +867,6 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
 }
 
 /**
- * Creates a formatted string using a variable argument list.
- * 
- * @param format The format string.
- * @param ... Variable arguments to format.
- * @return The formatted string, or NULL in case of memory allocation failure.
- */
-static char *create_string(const char *format, ...)
-{
-    va_list args, args_copy;
-    va_start(args, format);
-    va_copy(args_copy, args);
-    
-    int size = vsnprintf(NULL, 0, format, args_copy);
-    va_end(args_copy);
-
-    char *string = (char *)malloc(size + 1);
-    if (string == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
-        va_end(args);
-        return NULL;
-    }
-
-    vsnprintf(string, size + 1, format, args);
-    va_end(args);
-
-    return string;
-}
-
-/**
  * Handles the display of statistics when no player is available for the game.
  * 
  * @param width The width of the display.
@@ -889,15 +879,58 @@ static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inn
     put_empty_row(1);
     put_text("No statistics available for the game without the player.", width, CENTER);
     put_empty_row(3);
+    put_text("PLAY AGAIN [P]", width, CENTER);
     put_text("NEW GAME [N]", width, CENTER);
     put_text("QUIT [Q]", width, CENTER);
-    put_empty_row(3);
+    put_empty_row(2);
 
     if (render_terminal(terminal_data, width, data->terminal_signal, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
     return SUCCESS;
+}
+
+/**
+ * @brief Creates a formatted resources string based on player and level data.
+ *
+ * This function creates a formatted string that displays the resources' current amounts and request amounts
+ * based on the provided player and level data. It formats the string differently depending on whether gold,
+ * iron, or copper resources are requested.
+ *
+ * @param player A pointer to the player_t structure containing resource amounts.
+ * @param level A level_row_t structure containing resource request amounts.
+ * @return A dynamically allocated string representing the formatted resources string.
+ *         The caller is responsible for freeing the memory when done using the string.
+ * @warning The created string must be freed by the caller when no longer needed.
+ */
+static const char *create_level_info_string(player_t *player)
+{
+    levels_table_t *levels = NULL;
+    materials_table_t *materials = NULL;
+    if (!load_extern_game_data(GAME_DATA_PATH, &materials, &levels)) {
+        return NULL;
+    }
+
+    char *level_info = NULL;
+    if (player->level + 1 > levels->count - 1) {
+        level_info = create_string("You have reached the maximum level! You are now the master of the interstellar space...");
+    } else {
+        level_info = create_string("For the level %d you need still: STONE (%d/%d), COPPER (%d/%d), IRON (%d/%d) and GOLD (%d/%d).", player->level + 1,
+                                                                                                                                     player->stone,
+                                                                                                                                     levels->levels[player->level].stone_request,
+                                                                                                                                     player->copper,
+                                                                                                                                     levels->levels[player->level].copper_request,
+                                                                                                                                     player->iron,
+                                                                                                                                     levels->levels[player->level].iron_request,
+                                                                                                                                     player->gold,
+                                                                                                                                     levels->levels[player->level].gold_request);
+    }
+
+    release_levels_table(levels);
+    release_materials_table(materials);
+
+    return level_info;
 }
 
 /**
@@ -934,10 +967,10 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
 
-    char *game_collected = create_string("In the game you collected: %d STONE, %d IRON, %d COPPER and %d GOLD.", updated_player->stone - data->player_choosen_to_game->stone,
-                                                                                                                 updated_player->iron - data->player_choosen_to_game->iron,
-                                                                                                                 updated_player->copper - data->player_choosen_to_game->copper,
-                                                                                                                 updated_player->gold - data->player_choosen_to_game->gold);
+    char *game_collected = create_string("In the game you collected: %d STONE, %d COPPER, %d IRON and %d GOLD.", (updated_player->stone - data->player_choosen_to_game->stone < 0) ? updated_player->stone : updated_player->stone - data->player_choosen_to_game->stone,
+                                                                                                                 (updated_player->copper - data->player_choosen_to_game->copper < 0) ? updated_player->copper : updated_player->copper - data->player_choosen_to_game->copper,
+                                                                                                                 (updated_player->iron - data->player_choosen_to_game->iron < 0) ? updated_player->iron : updated_player->iron - data->player_choosen_to_game->iron,
+                                                                                                                 (updated_player->gold - data->player_choosen_to_game->gold < 0) ? updated_player->gold : updated_player->gold - data->player_choosen_to_game->gold);
     if (game_collected == NULL) {
         release_player(updated_player);
         release_player(data->player_choosen_to_game);
@@ -945,11 +978,14 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
         return ERROR;
     }
 
-    char *level_info = create_string("For the level %d you need still: STONE (%d/?), IRON (%d/?), COPPER (%d/?) and GOLD (%d/?).", updated_player->level + 1,
-                                                                                                                                   updated_player->stone,
-                                                                                                                                   updated_player->iron,
-                                                                                                                                   updated_player->copper,
-                                                                                                                                   updated_player->gold);
+    char *level_info = (char*)create_level_info_string(updated_player);
+    if (level_info == NULL) {
+        release_player(updated_player);
+        release_player(data->player_choosen_to_game);
+        free(intro);
+        return ERROR;
+    }
+
     if (level_info == NULL) {
         free(game_collected);
         free(intro);
@@ -963,9 +999,10 @@ static page_return_code_t load_after_game_page(px_t height, px_t width, page_loa
     put_text(game_collected, width, CENTER);
     put_text(level_info, width, CENTER);
     put_empty_row(2);
+    put_text("PLAY AGAIN [P]", width, CENTER);
     put_text("NEW GAME [N]", width, CENTER);
     put_text("QUIT [Q]", width, CENTER);
-    put_empty_row(2);
+    put_empty_row(1);
 
     release_player(updated_player);
     free(game_collected);
@@ -1108,15 +1145,69 @@ static void display_hearts(const char *player_name, int number_of_hearts)
 }
 
 /**
+ * @brief Creates a formatted resources string based on player and level data.
+ *
+ * This function creates a formatted string that displays the resources' current amounts and request amounts
+ * based on the provided player and level data.
+ *
+ * @param player A pointer to the player_t structure containing resource amounts.
+ * @param level A level_row_t structure containing resource request amounts.
+ * @return A dynamically allocated string representing the formatted resources string.
+ *         The caller is responsible for freeing the memory when done using the string.
+ * @warning The created string must be freed by the caller when no longer needed!
+ */
+static const char *create_resources_string(player_t *player, level_row_t level)
+{
+    if (level.gold_request != 0) {
+        return create_string("STONE (%d/%d) COPPER(%d/%d) IRON(%d/%d) GOLD(%d/%d)",
+                             player->stone, level.stone_request,
+                             player->copper, level.copper_request,
+                             player->iron, level.iron_request,
+                             player->gold, level.gold_request);
+    }
+
+    if (level.iron_request != 0) {
+        return create_string("STONE (%d/%d) COPPER(%d/%d) IRON(%d/%d)",
+                             player->stone, level.stone_request,
+                             player->copper, level.copper_request,
+                             player->iron, level.iron_request);
+    }
+
+    if (level.copper_request != 0) {
+        return create_string("STONE (%d/%d) COPPER(%d/%d)",
+                             player->stone, level.stone_request,
+                             player->copper, level.copper_request);
+    }
+
+    return create_string("STONE (%d/%d)", player->stone, level.stone_request);
+}
+
+/**
  * Displays resource information for a player.
  * 
  * @param player The player whose resources to display.
+ * @param levels The data about the game levels.
  * @param width The width of the display.
  */
-static void display_resources(player_t *player, int width)
+static void display_resources(player_t *player, levels_table_t *levels, int width)
 {
     put_text("Resources:", width, CENTER);
-    write_text("\t\t   STONE (%d/?) IRON(%d/?) COPPER(%d/?) GOLD(%d/?) ", player->stone, player->iron, player->copper, player->gold);
+
+    const char *string = NULL;
+    if (player->level > (levels->count - 1)) {
+       string = create_string("STONE(%d/N.A.) COPPER(%d/N.A.) IRON(%d/N.A.) GOLD(%d/N.A.)", player->stone, player->copper, player->iron, player->gold);
+    } else {
+        string = create_resources_string(player, levels->levels[player->level]);
+    }
+
+    if (string == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        put_text("Memory allocation error occured. Data about your resources could not be loaded.", width, CENTER);
+        return;
+    }
+
+    put_text(string, width, CENTER);
+    free((char*)string);
 }
 
 /**
@@ -1130,7 +1221,7 @@ static void display_live_stats(game_t *game)
     display_hearts("Enemy", game->enemy->hearts);
     display_hearts("\t\t\t      Your", game->player->hearts);
     write_text("\n");
-    display_resources(game->player, game->width);
+    display_resources(game->player, game->levels_table, game->width);
 }
 
 /**

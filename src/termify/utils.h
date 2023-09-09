@@ -1,8 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+
+#include "errors.h"
 
 #define STR_EQ(_str1, _str2) (strcmp(_str1, _str2) == 0) ? true : false
 #define SQUARE(_num) (_num * _num)
@@ -31,5 +35,25 @@ bool convert_string_2_int(const char* str, int* placeholder);
  * @param string The input string to be modified.
  */
 void strip_newline(char* string);
+
+/**
+ * @brief Removes all leading and trailing whitespace characters from a string.
+ * 
+ * This function removes whitespace characters (such as space, tab, newline, etc.)
+ * from the beginning and end of the input string. The modified string will be
+ * stored in the same memory location as the input string.
+ * 
+ * @param string The input string to be modified.
+ */
+void complete_strip(char* string);
+
+/**
+ * Creates a formatted string using a variable argument list.
+ * 
+ * @param format The format string.
+ * @param ... Variable arguments to format.
+ * @return The formatted string, or NULL in case of memory allocation failure.
+ */
+char *create_string(const char *format, ...);
 
 #endif
