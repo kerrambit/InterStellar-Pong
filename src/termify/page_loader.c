@@ -33,16 +33,19 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
 static page_return_code_t load_pre_create_new_player_page(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static page_return_code_t load_quit_or_back_with_confirmation(px_t height, px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 
+static page_return_code_t display_new_name_in_terminal(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static page_return_code_t handle_stats_for_no_player(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data);
 static void put_player(px_t width, px_t button_width, px_t button_height, player_t *player, bool last, px_t row_margin);
+static void check_and_set_player_name(const char *command, page_loader_inner_data_t *data);
 static void display_resources(player_t *player, levels_table_t *levels, int width);
 static int update_players_stats(player_t *target_player, const char *file_path);
 static const char *create_resources_string(player_t *player, level_row_t level);
+static bool is_name_too_long(const char *name, page_loader_inner_data_t *data);
 static bool is_name_unique(const char *name, page_loader_inner_data_t *data);
 static char *create_player_string(player_t *player, bool end_with_newline);
 static void display_hearts(const char *player_name, int number_of_hearts);
 static int write_player_to_file(player_t *player, const char *file_path);
-static bool check_name(const char *name, page_loader_inner_data_t *data);
+static bool is_name_valid(const char *name, page_loader_inner_data_t *data);
 static player_t *find_player(const char *name, const char *file_path);
 static page_t handle_save_and_play(page_loader_inner_data_t *data);
 static page_t choose_pregame_page(page_loader_inner_data_t *data);
@@ -165,15 +168,7 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
             return handle_save_and_play(data);
         } else {
             data->curr_player_name_seen_flag = false;
-            free(data->curr_player_name);
-            data->curr_player_name = NULL;
-            if(!check_name(command, data)) {
-                data->curr_player_name = INVALID_NAME;
-                return CREATE_NEW_PLAYER_PAGE;
-            }
-            if (!is_name_unique(command, data)) {
-                data->curr_player_name = NOT_UNIQUE_NAME;
-            }
+            check_and_set_player_name(command, data);
             return CREATE_NEW_PLAYER_PAGE;
         }
     // ----------------------------------------------------------------------------------------- //
@@ -753,13 +748,46 @@ static page_t handle_save_and_play(page_loader_inner_data_t *data)
 }
 
 /**
+ * @brief Checks and sets the player's name based on the provided command.
+ *
+ * This function performs validation and uniqueness checks on the provided player name command.
+ * If the name is valid, unique, and not too long, it is set as the current player's name in the
+ * `page_loader_inner_data_t` structure. Otherwise, appropriate error flags are set.
+ *
+ * @param command The player name command to be checked and set.
+ * @param data Pointer to the page loader inner data structure.
+ *
+ * @note This function frees the current player's name in `data` before setting a new name.
+ */
+static void check_and_set_player_name(const char *command, page_loader_inner_data_t *data)
+{
+    free(data->curr_player_name);
+    data->curr_player_name = NULL;
+
+    if (!is_name_valid(command, data)) { // name is being stored here
+        data->curr_player_name = INVALID_NAME;
+        return;
+    }
+
+    if (!is_name_unique(command, data)) {
+        data->curr_player_name = NOT_UNIQUE_NAME;
+        return;
+    }
+
+    if (is_name_too_long(command, data)) {
+        data->curr_player_name = TOO_LONG_NAME;
+        return;
+    }
+}
+
+/**
  * Checks the validity of the entered player name and stores it in the data structure.
  * 
  * @param name The name to check.
  * @param data Inner data structure for page loading.
  * @return Returns true if the name is valid and stored successfully, otherwise false.
  */
-static bool check_name(const char *name, page_loader_inner_data_t *data)
+static bool is_name_valid(const char *name, page_loader_inner_data_t *data)
 {
     if (name != NULL) {
         if (STR_EQ(name, "")) {
@@ -814,6 +842,25 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data)
 }
 
 /**
+ * Checks if the entered player name is too long.
+ * The hard limit was set to 14 bacause of the width of buttons in players' gallery.
+ * 
+ * @param name The name to check for uniqueness.
+ * @param data Inner data structure for page loading.
+ * @return Returns true if the name is too long, otherwise false.
+ */
+static bool is_name_too_long(const char *name, page_loader_inner_data_t *data)
+{
+    if (strlen(name) >= 15) {
+        free(data->curr_player_name);
+        data->curr_player_name = NULL;
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Loads the create new player page, allowing the user to enter a new player name and validating its uniqueness.
  * 
  * @param height The height of the display.
@@ -842,32 +889,55 @@ static page_return_code_t load_create_new_player_page(px_t height, px_t width, p
     put_empty_row(2);
 
     if (data->curr_player_name != NULL && !data->curr_player_name_seen_flag) {
-        if (STR_EQ(data->curr_player_name, INVALID_NAME)) {
-            data->curr_player_name = NULL;
-            if (render_terminal(terminal_data, width, true, "This name is invalid.", TERMINAL_ERROR) == -1) {
-                return ERROR;
-            }
-        } else if (STR_EQ(data->curr_player_name, NOT_UNIQUE_NAME)) {
-            data->curr_player_name = NULL;
-            if (render_terminal(terminal_data, width, true, "This name is not unique.", TERMINAL_ERROR) == -1) {
-                return ERROR;
-            }
-        } else if (STR_EQ(data->curr_player_name, NO_NAME_ENTERED)) {
-            data->curr_player_name = NULL;
-            if (render_terminal(terminal_data, width, true, "No name was entered.", TERMINAL_ERROR) == -1) {
-                return ERROR;
-            }
-        } else if (render_terminal(terminal_data, width, true, "This name is valid and unique.", TERMINAL_APPROVAL) == -1) {
-            return ERROR;
-        }
-        data->curr_player_name_seen_flag = true;
-        return SUCCESS;
+        return display_new_name_in_terminal(width, data, terminal_data);
     }
 
     if (render_terminal(terminal_data, width, false, NULL, TERMINAL_N_A) == -1) {
         return ERROR;
     }
     
+    return SUCCESS;
+}
+
+/**
+ * @brief Displays a new player name in the terminal.
+ *
+ * This function displays a player's name in the terminal along with an associated message,
+ * depending on the validity and uniqueness of the name.
+ *
+ * @param width The width of the display.
+ * @param data Pointer to the page loader inner data structure.
+ * @param terminal_data Pointer to the terminal data structure.
+ *
+ * @return SUCCESS if the name is valid and unique else ERROR
+ */
+static page_return_code_t display_new_name_in_terminal(px_t width, page_loader_inner_data_t *data, terminal_data_t *terminal_data)
+{
+    char *message = NULL;
+    terminal_output_mode_t terminal_output_mode = TERMINAL_ERROR;
+
+    if (STR_EQ(data->curr_player_name, INVALID_NAME)) {
+        message = "This name is not valid";
+        data->curr_player_name = NULL;
+    } else if (STR_EQ(data->curr_player_name, NOT_UNIQUE_NAME)) {
+        data->curr_player_name = NULL;
+        message = "This name is not unique.";
+    } else if (STR_EQ(data->curr_player_name, NO_NAME_ENTERED)) {
+        data->curr_player_name = NULL;
+        message = "No name was entered.";
+    } else if (STR_EQ(data->curr_player_name, TOO_LONG_NAME)) {
+        data->curr_player_name = NULL;
+        message = "Entered name is too long (max 14 characters).";
+    } else {
+        message = "This name is valid and unique.";
+        terminal_output_mode = TERMINAL_APPROVAL;
+    } 
+
+    if (render_terminal(terminal_data, width, true, message, terminal_output_mode) == -1) {
+        return ERROR;
+    }
+
+    data->curr_player_name_seen_flag = true;
     return SUCCESS;
 }
 

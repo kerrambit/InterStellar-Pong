@@ -23,6 +23,7 @@ void resolve_error(errors_t error)
     case INVALID_DATA_IN_FILE: PRINT_ERROR_MESS("[Data Error]: data in file was invalid or corrupted");
     case MISSING_DATA_FILE: PRINT_ERROR_MESS("[Application Error]: file with data was not found");
     case FAILURE_OF_RENAMING_FILE: PRINT_ERROR_MESS("[I/O Error]: renaming of the file failed");
+    case TOO_LONG_INPUT: PRINT_ERROR_MESS("[I/O Error]: writing to the file failed because of too long input");
     default:
         break;
     }

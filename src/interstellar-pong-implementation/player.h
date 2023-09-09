@@ -22,6 +22,7 @@
 #define INVALID_NAME ";"
 #define NOT_UNIQUE_NAME ";;"
 #define NO_NAME_ENTERED ";;;"
+#define TOO_LONG_NAME ";;;;"
 
 /**
  * @struct player_t

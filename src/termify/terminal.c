@@ -11,6 +11,7 @@
 // ---------------------------------------- MACROS --------------------------------------------- //
 
 #define TERMINAL_FILE_PATH "src/termify/temp/user_input.data"
+#define TERMINAL_LINE_LENGTH_HARD_LIMIT 512
 #define BACKSPACE 127
 #define ESCPAPE 27
 #define NEWLINE '\n'
@@ -21,9 +22,10 @@ static bool add_to_terminal_file_cursor_storage(terminal_file_cursor_storage_t *
 static terminal_cursor_duo_t create_terminal_cursor_duo(int cursor_offset, int line_length);
 static char* get_last_line(char *filename, terminal_data_t *terminal_data, int buffer_size);
 static void release_terminal_file_cursor_storage(terminal_file_cursor_storage_t *storage);
-static int clear_terminal_window(terminal_data_t *terminal_data, FILE *file);
+static int write_character_into_file(char c, FILE *file, unsigned long line_length);
+static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage(void);
 static char* get_line(const char *filename, int buffer_size, int file_offset);
-static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage();
+static int clear_terminal_window(terminal_data_t *terminal_data, FILE *file);
 static int get_maximal_terminal_buffer_size(unsigned long current_line_size);
 static int parse_newline(terminal_data_t *terminal_data, char **command);
 static int parse_backspace(terminal_data_t *terminal_data, FILE *file);
@@ -130,8 +132,7 @@ int process_command(terminal_data_t *terminal_data, char c, char **command)
         return parse_backspace_return_code;
     }
 
-    if (fputc(c, file) == EOF) {
-        resolve_error(CORRUPTED_WRITE_TO_FILE);
+    if (write_character_into_file(c, file, terminal_data->curr_file_line_size) == -1) {
         fclose(file);
         return -1;
     }
@@ -145,6 +146,33 @@ int process_command(terminal_data_t *terminal_data, char c, char **command)
     }
 
     fclose(file);
+    return 0;
+}
+
+/**
+ * @brief Writes a character into a file.
+ *
+ * This function writes a character into a specified file and performs error checks during the write operation.
+ *
+ * @param c The character to be written to the file.
+ * @param file A pointer to the file where the character will be written.
+ * @param line_length The current line length in the file (excluding the character to be written).
+ *
+ * @return 0 if the character is successfully written to the file.
+ * @return -1 if an error occurs during the write operation.
+ */
+static int write_character_into_file(char c, FILE *file, unsigned long line_length)
+{
+    if (line_length + 1 >= TERMINAL_LINE_LENGTH_HARD_LIMIT) {
+        resolve_error(TOO_LONG_INPUT);
+        return -1;
+    }
+
+    if (fputc(c, file) == EOF) {
+        resolve_error(CORRUPTED_WRITE_TO_FILE);
+        return -1;
+    }
+
     return 0;
 }
 

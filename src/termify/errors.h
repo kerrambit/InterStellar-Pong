@@ -30,7 +30,8 @@ typedef enum errors_t
     MEM_ALOC_FAILURE,
     INVALID_DATA_IN_FILE,
     MISSING_DATA_FILE,
-    FAILURE_OF_RENAMING_FILE
+    FAILURE_OF_RENAMING_FILE,
+    TOO_LONG_INPUT
 } errors_t;
 
 /**
