@@ -109,8 +109,7 @@ int process_command(terminal_data_t *terminal_data, char c, char **command)
         return 0;
     }
 
-    if (c == ESCPAPE)
-    {
+    if (c == ESCPAPE) {
         return handle_arrow_up_and_down(terminal_data);
     }
 

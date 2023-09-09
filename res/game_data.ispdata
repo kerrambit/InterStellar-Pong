@@ -1,6 +1,6 @@
 # Description:
 # This file is devided into 2 parts: first part describes the material table and the later
-# represents indivial levels. Lines starting with '#' are marked as comments and are ignored. The empty lines are ignored, too.
+# represents individual levels. Lines starting with '#' are marked as comments and are ignored. The empty lines are ignored, too.
 
 # Information about materials:
 # The line describing the material contains 4 numbers devided by ';'. First 2 number states the probability
