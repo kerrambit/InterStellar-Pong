@@ -17,12 +17,18 @@
 
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
-static char* get_last_line(terminal_data_t *terminal_data, int buffer_size);
-static int get_maximal_terminal_buffer_size(terminal_data_t *terminal_data);
+static bool add_to_terminal_file_cursor_storage(terminal_file_cursor_storage_t *terminal_file_cursor_storage, terminal_cursor_duo_t duo);
+static terminal_cursor_duo_t create_terminal_cursor_duo(int cursor_offset, int line_length);
+static char* get_last_line(char *filename, terminal_data_t *terminal_data, int buffer_size);
+static void release_terminal_file_cursor_storage(terminal_file_cursor_storage_t *storage);
+static int clear_terminal_window(terminal_data_t *terminal_data, FILE *file);
+static char* get_line(const char *filename, int buffer_size, int file_offset);
+static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage();
+static int get_maximal_terminal_buffer_size(unsigned long current_line_size);
 static int parse_newline(terminal_data_t *terminal_data, char **command);
 static int parse_backspace(terminal_data_t *terminal_data, FILE *file);
+static int handle_arrow_up_and_down(terminal_data_t *terminal_data);
 static bool check_character(char c);
-static void skip_arrow_seq();
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
 
@@ -67,6 +73,16 @@ terminal_data_t *enable_terminal(char *default_mess, terminal_output_mode_t defa
     data->terminal_spacial_flag_default_mess_mode = special_flag_default_mess_mode;
     data->curr_file_cursor = 0; data->curr_file_line_size = 0;
 
+    data->cursors_storage = create_terminal_file_cursor_storage();
+    if (data->cursors_storage == NULL) {
+        free(data->terminal_default_mess);
+        free(data);
+        return NULL;
+    }
+
+    data->curr_line = 0;
+    data->lines_count_in_file = 0;
+
     return data;
 }
 
@@ -80,51 +96,22 @@ int close_terminal(terminal_data_t *terminal_data)
     if (terminal_data != NULL) {
         free(terminal_data->terminal_default_mess);
         free(terminal_data->terminal_special_flag_default_mess);
+        release_terminal_file_cursor_storage(terminal_data->cursors_storage);
         free(terminal_data);
     }
 
     return 0;
 }
 
-/**
- * @brief Checks if a character falls within a valid range for input handling.
- *
- * Valid characters include normal printable characters, newline, and
- * backspace. It also handles the case of arrow keys by skipping their sequence if detected.
- * 
- * @param c The character to be checked.
- * @return Returns true if the character is within the valid range, otherwise false.
- */
-static bool check_character(char c)
-{
-    if (c == BACKSPACE || c == NEWLINE || (c >= 32 && c <= 126)) {
-        return true;
-    }
-
-    if (c == ESCPAPE)
-    {
-        skip_arrow_seq();
-    }
-    return false;
-}
-
-/**
- * @brief Skips an escape sequence representing arrow keys in the terminal input.
- * 
- * When arrow keys are pressed in the terminal, they are often represented as escape sequences
- * consisting of the escape character followed by other characters. This function reads and
- * discards the next two characters from the terminal input, effectively skipping the escape sequence.
- */
-static void skip_arrow_seq()
-{
-    (void)getchar();
-    (void)getchar();
-}
-
 int process_command(terminal_data_t *terminal_data, char c, char **command)
 {
     if (!check_character(c)) {
         return 0;
+    }
+
+    if (c == ESCPAPE)
+    {
+        return handle_arrow_up_and_down(terminal_data);
     }
 
     if (!terminal_data->is_terminal_enabled) {
@@ -187,8 +174,8 @@ int render_terminal(terminal_data_t *terminal_data, px_t line_width, bool specia
             mode_to_print_with = mode;
         }
     } else {
-        int buffer_size = get_maximal_terminal_buffer_size(terminal_data);
-        line = get_last_line(terminal_data, buffer_size);
+        int buffer_size = get_maximal_terminal_buffer_size(terminal_data->curr_file_line_size);
+        line = get_last_line(TERMINAL_FILE_PATH, terminal_data, buffer_size);
         if (strlen(line) != 0) {
             string_to_print = line;
             mode_to_print_with = TERMINAL_NORMAL_TEXT;
@@ -228,6 +215,196 @@ int render_terminal(terminal_data_t *terminal_data, px_t line_width, bool specia
 }
 
 /**
+ * @brief Clears the virtual terminal window by removing text from the terminal window.
+ *
+ * @param terminal_data A pointer to the terminal_data_t structure.
+ * @param file A pointer to the FILE stream used for terminal operations.
+ *
+ * @return 0 on success, -1 on failure
+ */
+static int clear_terminal_window(terminal_data_t *terminal_data, FILE *file)
+{
+    unsigned long counter = terminal_data->curr_file_line_size;
+    for (int i = 0; i < counter; ++i) {
+        if (parse_backspace(terminal_data, file) == -1) {
+            fclose(file);
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/**
+ * @brief Handles Arrow Up and Arrow Down keypresses.
+ *
+ * This function handles Arrow Up and Arrow Down keypresses in the terminal.
+ * The effect of pressing these buttons is definied as browsing the commands history.
+ *
+ * @param terminal_data A pointer to the terminal_data_t structure.
+ *
+ * @return 0 on success, -1 on failure
+ */
+static int handle_arrow_up_and_down(terminal_data_t *terminal_data)
+{
+    int c1 = getchar();
+    int c2 = getchar();
+
+    if (c1 == '[' && c2 == 'A') {
+        terminal_data->curr_line--;
+    } else if (c1 == '[' && c2 == 'B') {
+        terminal_data->curr_line++;
+    } else {
+        return 0;
+    }
+
+    FILE* file = fopen(TERMINAL_FILE_PATH, "a");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        return -1;
+    }
+
+    if (terminal_data->curr_line < 0) {
+        terminal_data->curr_line++;
+        fclose(file);
+        return 0;
+    }
+
+    if (terminal_data->curr_line > terminal_data->lines_count_in_file) {
+        terminal_data->curr_line--;
+        fclose(file);
+        return 0;
+    }
+
+    if (clear_terminal_window(terminal_data, file) == -1) {
+        fclose(file);
+        return -1;
+    }
+    
+    if (terminal_data->curr_line == terminal_data->lines_count_in_file) {
+        fclose(file);
+        return 0;
+    }
+
+    char *string = get_line(TERMINAL_FILE_PATH, terminal_data->cursors_storage->storage[terminal_data->curr_line].line_length, terminal_data->cursors_storage->storage[terminal_data->curr_line].cursor_offset);
+    strip_newline(string);
+    terminal_data->curr_file_line_size += strlen(string);
+    terminal_data->curr_file_cursor += strlen(string);
+
+    fprintf(file, "%s", string);
+    free(string);
+    fclose(file);
+
+    return 0;
+}
+
+/**
+ * @brief Creates a new `terminal_file_cursor_storage_t` instance.
+ *
+ * This function initializes a dynamic array for storing terminal cursor information,
+ * such as cursor offsets and line lengths.
+ *
+ * @return A pointer to the newly created `terminal_file_cursor_storage_t` instance,
+ *         or NULL if memory allocation fails.
+ */
+static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage()
+{
+    const int BEGIN_ARRAY_SIZE = 4;
+
+    terminal_file_cursor_storage_t *storage = malloc(sizeof(terminal_file_cursor_storage_t));
+    if (storage == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    storage->count = 0;
+    storage->length = BEGIN_ARRAY_SIZE;
+    storage->storage = malloc(sizeof(terminal_cursor_duo_t) * storage->length);
+
+    if (storage->storage == NULL) {
+        free(storage);
+        return NULL;
+    }
+
+    return storage;
+}
+
+/**
+ * @brief Creates a new terminal_cursor_duo_t instance with the specified cursor offset and line length.
+ *
+ * @param cursor_offset The offset of the cursor.
+ * @param line_length   The length of the line.
+ * @return A terminal_cursor_duo_t instance with the given values.
+ */
+static terminal_cursor_duo_t create_terminal_cursor_duo(int cursor_offset, int line_length)
+{
+    terminal_cursor_duo_t duo;
+    duo.cursor_offset = cursor_offset; duo.line_length = line_length;
+    return duo;
+}
+
+/**
+ * @brief Adds a terminal_cursor_duo_t instance to the terminal_file_cursor_storage_t.
+ *
+ * @param terminal_file_cursor_storage The terminal_file_cursor_storage_t to which the duo should be added.
+ * @param duo The terminal_cursor_duo_t instance to add.
+ * @return true if the addition was successful, false otherwise.
+ */
+static bool add_to_terminal_file_cursor_storage(terminal_file_cursor_storage_t *terminal_file_cursor_storage, terminal_cursor_duo_t duo)
+{
+    const int GROWTH_FACTOR = 2;
+
+    if (terminal_file_cursor_storage == NULL) {
+        return false;
+    }
+
+    if (terminal_file_cursor_storage->count >= terminal_file_cursor_storage->length) {
+        terminal_file_cursor_storage->length *= GROWTH_FACTOR;
+        terminal_cursor_duo_t *new_terminal_file_cursor_storage = realloc(terminal_file_cursor_storage->storage, sizeof(terminal_cursor_duo_t) * terminal_file_cursor_storage->length);
+        if (new_terminal_file_cursor_storage == NULL) {
+            return false;
+        }
+        terminal_file_cursor_storage->storage = new_terminal_file_cursor_storage;
+    }
+
+    terminal_file_cursor_storage->storage[terminal_file_cursor_storage->count++] = duo;
+    return true;
+}
+
+/**
+ * @brief Releases the memory allocated for a `terminal_file_cursor_storage_t` instance.
+ *
+ * This function deallocates the memory used by the provided terminal cursor storage,
+ * including the array of cursor duos and the storage structure itself.
+ *
+ * @param storage A pointer to the `terminal_file_cursor_storage_t` instance to release.
+ */
+static void release_terminal_file_cursor_storage(terminal_file_cursor_storage_t *storage)
+{
+    if (storage != NULL) {
+        free(storage->storage);
+        free(storage);
+    }
+}
+
+/**
+ * @brief Checks if a character falls within a valid range for input handling.
+ *
+ * Valid characters include normal printable characters, newline, and
+ * backspace. It also handles the case of arrow keys by skipping their sequence if detected.
+ * 
+ * @param c The character to be checked.
+ * @return Returns true if the character is within the valid range, otherwise false.
+ */
+static bool check_character(char c)
+{
+    if (c == BACKSPACE || c == NEWLINE || (c >= 32 && c <= 126) || c == ESCPAPE) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * @brief Parses a newline character and retrieves the current command.
  *
  * The `parse_newline` function processes a newline character in the terminal file and retrieves the
@@ -239,8 +416,14 @@ int render_terminal(terminal_data_t *terminal_data, px_t line_width, bool specia
  */
 static int parse_newline(terminal_data_t *terminal_data, char **command)
 {
-    int buffer_size = get_maximal_terminal_buffer_size(terminal_data);
-    char *line = get_last_line(terminal_data, buffer_size);
+    int buffer_size = get_maximal_terminal_buffer_size(terminal_data->curr_file_line_size);
+    char *line = get_last_line(TERMINAL_FILE_PATH, terminal_data, buffer_size);
+
+    terminal_cursor_duo_t current_line_duo = create_terminal_cursor_duo(terminal_data->curr_file_cursor - strlen(line) - 1, strlen(line));
+    if(!add_to_terminal_file_cursor_storage(terminal_data->cursors_storage, current_line_duo)) {
+        free(line);
+        return -1;
+    }
 
     *command = malloc(strlen(line) + 1);
     if (*command == NULL) {
@@ -251,7 +434,11 @@ static int parse_newline(terminal_data_t *terminal_data, char **command)
 
     strcpy(*command, line);
 
+    fprintf(stderr, "\nNew command was entered: <%s>. Current file cursor offset was saved [%d]. The current length was saved [%d].\n", *command, current_line_duo.cursor_offset, current_line_duo.line_length);
+
     terminal_data->curr_file_line_size = 0;
+    terminal_data->lines_count_in_file++;
+    terminal_data->curr_line = terminal_data->lines_count_in_file;
     free(line);
 
     return 0;
@@ -296,16 +483,55 @@ static int parse_backspace(terminal_data_t *terminal_data, FILE *file)
  * @param terminal_data A pointer to the terminal data structure.
  * @return The maximal buffer size.
  */
-static int get_maximal_terminal_buffer_size(terminal_data_t *terminal_data)
+static int get_maximal_terminal_buffer_size(unsigned long current_line_size)
 {
     const int MAX_BUFFER_SIZE = 102;
 
-    int buffer_size = terminal_data->curr_file_line_size;
-    if (buffer_size > MAX_BUFFER_SIZE) {
+    int buffer_size = current_line_size;
+    if (buffer_size > MAX_BUFFER_SIZE || buffer_size == 0) {
         buffer_size = MAX_BUFFER_SIZE;
     }
 
     return buffer_size;
+}
+
+/**
+ * @brief Gets the line of the terminal file.
+ *
+ * The `get_line` function retrieves and returns the line of the terminal file given by its offset.
+ *
+ * @param terminal_data A pointer to the terminal data structure.
+ * @param buffer_size The buffer size for reading the line.
+ * @param file_offset The offset in the file.
+ * @return A dynamically allocated string containing the line.
+ */
+static char* get_line(const char *filename, int buffer_size, int file_offset)
+{
+    char *line = calloc(buffer_size + 1, sizeof(char));
+    if (line == NULL) {
+        resolve_error(MEM_ALOC_FAILURE);
+        return NULL;
+    }
+
+    FILE* file = fopen(filename, "rb");
+    if (file == NULL) {
+        resolve_error(UNOPENABLE_FILE);
+        free(line);
+        return NULL;
+    }
+
+    if (fseek(file, file_offset, SEEK_SET) != 0) {
+        resolve_error(GENERAL_IO_ERROR);
+        free(line);
+        fclose(file);
+        return NULL;
+    }
+
+    fread(line, sizeof(char), buffer_size, file);
+    line[buffer_size] = '\0'; 
+
+    fclose(file);
+    return line;
 }
 
 /**
@@ -318,31 +544,8 @@ static int get_maximal_terminal_buffer_size(terminal_data_t *terminal_data)
  * @param buffer_size The buffer size for reading the last line.
  * @return A dynamically allocated string containing the last line.
  */
-static char* get_last_line(terminal_data_t *terminal_data, int buffer_size)
+static char* get_last_line(char *filename, terminal_data_t *terminal_data, int buffer_size)
 {
-    char *line = calloc(buffer_size + 1, sizeof(char));
-    if (line == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
-        return NULL;
-    }
-
-    FILE* file = fopen(TERMINAL_FILE_PATH, "rb");
-    if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
-        free(line);
-        return NULL;
-    }
-
-    if (fseek(file, terminal_data->curr_file_cursor - terminal_data->curr_file_line_size, SEEK_SET) != 0) {
-        resolve_error(GENERAL_IO_ERROR);
-        free(line);
-        fclose(file);
-        return NULL;
-    }
-
-    fread(line, sizeof(char), buffer_size, file);
-    line[buffer_size] = '\0';
-
-    fclose(file);
-    return line;
+    int offset = terminal_data->curr_file_cursor - terminal_data->curr_file_line_size;
+    return get_line(filename, buffer_size, offset);
 }
