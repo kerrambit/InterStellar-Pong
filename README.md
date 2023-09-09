@@ -1,4 +1,4 @@
-# InterStellar Pong - v1.2.0
+# InterStellar Pong - v1.2.1
 
 Welcome to InterStellar Pong, a simple terminal-based game inspired by the classic Pong with an exciting twist!
 In this game, you'll not only play Pong but also collect valuable resources like stone, iron, copper, and gold to progress through higher levels.
@@ -52,8 +52,14 @@ Your progress through the game is being watched so you know where you are.
 
 ## Bug Fixes
 - **v1.0.0-beta**
-  - Fixed: Issue with game crashing after the user runs the game for the first time and chosses to play without creating player (error log: "[ERROR] - [Application Error]: file with data was not found.").
+  - Fixed: Issue with game crashing after the user runs the game for the first time and chooses to play without creating player (error log: "[ERROR] - [Application Error]: file with data was not found.").
   - Description: The game was crashing due to the fact, that program tried to update data in players.data file, however, such a file did not exist at the moment.
+- **v1.2.0**
+   - Fixed: Game crashed if the name of player was an empty string.
+   - Description: Empty string led to segfault when program tried to read and write into the player's file.
+
+   - Fixed: Unsafe handling of long terminal inputs and hard limit on player's name. There were set hard limits on player's name length (max is 14 characters) and terminal input (512 characters).
+   - Description: The problem happens when a long string is used as a player's name. In after game page, there occurs an error ("Process terminating with default action of signal 2 (SIGINT)") regarding the IO writes to the terminal window.
 
 ## Version History
 - **v1.1.0-beta**
