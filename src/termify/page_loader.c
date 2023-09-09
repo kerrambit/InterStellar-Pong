@@ -165,6 +165,8 @@ page_t find_page(page_t current_page, const char *command, page_loader_inner_dat
             return handle_save_and_play(data);
         } else {
             data->curr_player_name_seen_flag = false;
+            free(data->curr_player_name);
+            data->curr_player_name = NULL;
             if(!check_name(command, data)) {
                 data->curr_player_name = INVALID_NAME;
                 return CREATE_NEW_PLAYER_PAGE;
@@ -760,6 +762,9 @@ static page_t handle_save_and_play(page_loader_inner_data_t *data)
 static bool check_name(const char *name, page_loader_inner_data_t *data)
 {
     if (name != NULL) {
+        if (STR_EQ(name, "")) {
+            return false;
+        }
         for (int i = 0; i < strlen(name); ++i) {
             if (name[i] == ';') {
                 return false;
