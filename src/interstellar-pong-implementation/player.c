@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "errors.h"
+#include "../termify/errors.h"
 #include "player.h"
-#include "utils.h"
+#include "../termify/utils.h"
 
 // ---------------------------------------- MACROS --------------------------------------------- //
 

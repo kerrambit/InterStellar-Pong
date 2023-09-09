@@ -10,7 +10,7 @@
 
 // ---------------------------------------- MACROS --------------------------------------------- //
 
-#define TERMINAL_FILE_PATH "tmp_user_input.data"
+#define TERMINAL_FILE_PATH "src/termify/temp/user_input.data"
 #define BACKSPACE 127
 #define ESCPAPE 27
 #define NEWLINE '\n'
@@ -433,9 +433,6 @@ static int parse_newline(terminal_data_t *terminal_data, char **command)
     }
 
     strcpy(*command, line);
-
-    fprintf(stderr, "\nNew command was entered: <%s>. Current file cursor offset was saved [%d]. The current length was saved [%d].\n", *command, current_line_duo.cursor_offset, current_line_duo.line_length);
-
     terminal_data->curr_file_line_size = 0;
     terminal_data->lines_count_in_file++;
     terminal_data->curr_line = terminal_data->lines_count_in_file;

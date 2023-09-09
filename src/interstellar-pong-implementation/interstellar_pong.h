@@ -15,13 +15,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "draw.h"
-#include "errors.h"
+#include "../termify/draw.h"
+#include "../termify/errors.h"
 #include "levels.h"
 #include "materials.h"
-#include "page_loader.h"
+#include "../termify/page_loader.h"
 #include "player.h"
-#include "utils.h"
+#include "../termify/utils.h"
 
 /**
  * @brief Represents the possible states of a game. It is used to indicate whether the game is currently running or stopped (or terminated). 

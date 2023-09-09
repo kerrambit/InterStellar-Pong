@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
-#include "errors.h"
+#include "../termify/errors.h"
 #include "materials.h"
-#include "utils.h"
+#include "../termify/utils.h"
 
 material_row_t create_material_row(material_type_t material, int probability_of_size_1_px_t, int probability_of_size_2_px_t, int probability_of_rectangle_shape, int probability_of_square_shape)
 {

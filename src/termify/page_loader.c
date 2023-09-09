@@ -8,10 +8,10 @@
 
 #include "draw.h"
 #include "errors.h"
-#include "interstellar_pong.h"
+#include "../interstellar-pong-implementation/interstellar_pong.h"
 #include "page_loader.h"
-#include "paths.h"
-#include "player.h"
+#include "../interstellar-pong-implementation/paths.h"
+#include "../interstellar-pong-implementation/player.h"
 #include "terminal.h"
 #include "utils.h"
 

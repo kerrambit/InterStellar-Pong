@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
-#include "errors.h"
+#include "../termify/errors.h"
 #include "levels.h"
-#include "utils.h"
+#include "../termify/utils.h"
 
 level_row_t create_level_row(int stone_request, int copper_request, int iron_request, int gold_request, int prob_stone, int prob_copper, int prob_iron, int prob_gold)
 {

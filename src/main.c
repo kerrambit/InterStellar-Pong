@@ -21,11 +21,11 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "draw.h"
-#include "errors.h"
-#include "utils.h"
-#include "page_loader.h"
-#include "terminal.h"
+#include "termify/draw.h"
+#include "termify/errors.h"
+#include "termify/utils.h"
+#include "termify/page_loader.h"
+#include "termify/terminal.h"
 
 // ---------------------------------------- MACROS --------------------------------------------- //
 

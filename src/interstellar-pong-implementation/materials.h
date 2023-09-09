@@ -12,7 +12,7 @@
 #ifndef MATERIALS_H
 #define MATERIALS_H
 
-#include "draw.h"
+#include "../termify/draw.h"
 
 #define MATERIALS_COUNT 4
 
