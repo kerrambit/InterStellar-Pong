@@ -12,8 +12,8 @@ cd src
 gcc main.c termify/draw.c termify/errors.c termify/page_loader.c termify/terminal.c termify/utils.c interstellar-pong-implementation/interstellar_pong.c interstellar-pong-implementation/player.c interstellar-pong-implementation/materials.c interstellar-pong-implementation/levels.c -o ../InterStellar-Pong.app
 cd ..
 
-if [ ! -d "src/termify/termp" ]; then
-  mkdir "src/termify/termp"
+if [ ! -d "src/termify/temp" ]; then
+  mkdir "src/termify/temp"
 fi
 
 if [ $? -eq 0 ]; then
