@@ -37,7 +37,7 @@ Your progress through the game is being watched so you know where you are.
 - Build (the build is guaranteed to run without problems for at least version gcc-11):
 
    ```bash
-   chmod +x bash.sh && ./build.sh
+   chmod +x build.sh && ./build.sh
 
 - Run:
 
