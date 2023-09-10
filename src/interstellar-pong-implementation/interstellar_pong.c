@@ -101,6 +101,8 @@ game_t *init_game(player_t *player, px_t height, px_t width)
         return NULL;
     }
 
+    game->player_choosen_to_game = player;
+
     game->materials_table = NULL;
     game->levels_table = NULL;
 
@@ -345,10 +347,14 @@ static void update_player_to_next_level(game_t *game)
     int level = game->player->level;
 
     if (level <= game->levels_table->count - 1) {
-        game->player->stone = game->player->stone - game->levels_table->levels[level].stone_request;
-        game->player->copper = game->player->copper - game->levels_table->levels[level].copper_request;
-        game->player->iron = game->player->iron - game->levels_table->levels[level].iron_request;
-        game->player->gold = game->player->gold - game->levels_table->levels[level].gold_request;
+        game->player->stone -= game->levels_table->levels[level].stone_request;
+        game->player_choosen_to_game->stone -= game->levels_table->levels[level].stone_request;
+        game->player->copper -= game->levels_table->levels[level].copper_request;
+        game->player_choosen_to_game->copper -= game->levels_table->levels[level].copper_request;
+        game->player->iron -= game->levels_table->levels[level].iron_request;
+        game->player_choosen_to_game->iron -= game->levels_table->levels[level].iron_request;
+        game->player->gold -= game->levels_table->levels[level].gold_request;
+        game->player_choosen_to_game->gold -= game->levels_table->levels[level].gold_request;
 
         game->player->hearts = 3;
         game->enemy->hearts = 3;

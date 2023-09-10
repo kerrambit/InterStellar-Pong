@@ -39,6 +39,7 @@ typedef enum game_state_t {
 typedef struct game_t {
     scene_t *scene;                       /** Pointer to the game scene. */
     player_t *player;                     /** Pointer to the player object. */
+    player_t *player_choosen_to_game;     /** Pointer to the player object. This is the state of the player before the game - used for counting the resources collected in the game. */
     player_t *enemy;                      /** Pointer to the enemy object. */
     px_t width;                           /** Width of the game screen. */
     px_t height;                          /** Height of the game screen. */
