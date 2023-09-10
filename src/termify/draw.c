@@ -376,6 +376,17 @@ ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *
     return UNDEFINIED_ID;
 }
 
+void clear_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *object)
+{
+    for (px_t i = object->position_y; i < object->position_y + object->height; ++i) {
+        for (px_t j = object->position_x; j < object->position_x + object->width; ++j) {
+            if ((i * pixel_buffer->width + j) >= 0 && (i * pixel_buffer->width + j) < pixel_buffer->height * pixel_buffer->width) {
+                pixel_buffer->buff[i * pixel_buffer->width + j] = UNDEFINIED_ID;
+            }
+        }
+    }
+}
+
 void reset_pixel_buffer(pixel_buffer_t *pixel_buffer)
 {
     for (int i = 0; i < pixel_buffer->height; i++) {

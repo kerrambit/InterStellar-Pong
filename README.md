@@ -57,12 +57,12 @@ Your progress through the game is being watched so you know where you are.
 - **v1.2.0**
   - Fixed: Game crashed if the name of player was an empty string.
   - Description: Empty string led to segfault when program tried to read and write from/into the player's file.
-
   - Fixed: Unsafe handling of long terminal inputs and hard limit on player's name. There were set hard limits on player's name length (max is 14 characters) and terminal input (512 characters).
   - Description: The problem happens when a long string is used as a player's name. In after game page, an error occurs ("Process terminating with default action of signal 2 (SIGINT)") regarding the IO writes to the terminal window.
-
   - Fixed: Level up during the game will cause all your material to be displayed as "collected".
   - Description: The error occurs when a level update subtracts a given number of resources from the player. Then there is a discrepancy in the stats collected during the game. The bug has been fixed in that if a player is subtracted a given amount of resources, this amount is also subtracted from the player's pre-game pointer, which is then used to calculate the stats.
+  - Fixed: Minor visual glitch when hitting asteroid.
+  - Description: The source of the bug comes from the fact, that when the collision is detected, new material and coordinates are generated for the meteor, but the pixel buffer still contains old pixels from the old meteor position and material. The old meteor coordinates and material are cleared too late - at the beginning of the following frame. The fix is that when the collision is detected, the old pixels of a meteor are cleared instantly.
 
 ## Version History
 - **v1.1.0-beta**

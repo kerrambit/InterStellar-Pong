@@ -202,9 +202,12 @@ scene_t *update_scene(game_t *game, pixel_buffer_t *pixel_buffer)
         handle_ball_and_paddle_collision(ball, enemy);
     }
     if (detect_collision(collision_ID, meteor_1)) {
+        clear_object_pixels_in_buffer(pixel_buffer, meteor_1);
         handle_ball_and_meteor_collision(meteor_1, game);
+
     }
     if (detect_collision(collision_ID, meteor_2)) {
+        clear_object_pixels_in_buffer(pixel_buffer, meteor_2);
         handle_ball_and_meteor_collision(meteor_2, game);
     }
 

@@ -235,6 +235,17 @@ void render_graphics(pixel_buffer_t *pixel_buffer, scene_t *scene);
 ID_t compute_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *object);
 
 /**
+ * @brief Clears the pixels occupied by an object in a pixel buffer.
+ *
+ * This function clears the pixels occupied by an object in a pixel buffer by setting
+ * their values to `UNDEFINED_ID`.
+ *
+ * @param pixel_buffer Pointer to the pixel buffer where the pixels are stored.
+ * @param object Pointer to the rectangle representing the object's position and dimensions.
+ */
+void clear_object_pixels_in_buffer(pixel_buffer_t *pixel_buffer, rectangle_t *object);
+
+/**
  * @brief Resets the pixel buffer by clearing assigned pixel IDs.
  * 
  * @param pixel_buffer The pixel buffer to reset.
