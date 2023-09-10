@@ -664,10 +664,7 @@ static page_return_code_t load_choose_player_page(px_t height, px_t width, page_
     }
     
     for (int i = 0; i < rest; ++i) {
-        if (i > 0) {
-            write_text(" ");
-        }
-        put_player(width / rest, 30, 5, players->players[(data->curr_players_page_index * 3) + i], (i == (rest - 1) ? false : true), row_margin);
+        put_player(width / rest - ((rest == 1) ? 1 : 0), 30, 5, players->players[(data->curr_players_page_index * 3) + i], (i == (rest - 1) ? false : true), row_margin);
         row_margin += (width / rest);
     }
 
