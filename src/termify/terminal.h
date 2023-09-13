@@ -15,8 +15,10 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
-#include "draw.h"
 #include <stdbool.h>
+#include <termios.h>
+
+#include "draw.h"
 
 /**
  * @enum terminal_output_mode_t
@@ -59,6 +61,7 @@ typedef struct terminal_file_cursor_storage_t {
  * the terminal is enabled, the current cursor position in a file, default terminal messages, and more.
  */
 typedef struct terminal_data_t {
+    struct termios old_term;                                        /** The original terminal settings which is restored later. */
     bool is_terminal_enabled;                                       /** Indicates whether the terminal is enabled. */
     unsigned long curr_file_cursor;                                 /** Current cursor position in a file. */
     unsigned long curr_file_line_size;                              /** Size of the current file's line. */

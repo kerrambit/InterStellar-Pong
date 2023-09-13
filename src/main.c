@@ -18,7 +18,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
 #include <unistd.h>
 
 #include "termify/draw.h"
@@ -31,11 +30,6 @@
 
 #define WINDOW_WIDTH 112
 #define WINDOW_HEIGHT 22
-
-// ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
-
-static struct termios init_termios();
-static void restore_terminal_attributes(const struct termios *original_termios);
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
 
@@ -54,7 +48,7 @@ int main()
 {   
     hide_cursor();
 
-    // open and enable terminal
+    // enable terminal
     terminal_data_t *terminal_data;
     if ((terminal_data = enable_terminal("Enter your commands.", TERMINAL_LOG, "Unknown command.", TERMINAL_WARNING)) == NULL) {
         resolve_error(BROKEN_TERMINAL);
@@ -62,22 +56,18 @@ int main()
         return EXIT_FAILURE;
     }
 
-    struct termios old_term = init_termios();
-
     // create data holder for page loader
-    page_loader_inner_data_t *data = create_page_loader_inner_data();
-    if (data == NULL) {
-        restore_terminal_attributes(&old_term);
+    page_loader_inner_data_t *page_loader_data = create_page_loader_inner_data();
+    if (page_loader_data == NULL) {
         (void)close_terminal(terminal_data);
         show_cursor();
         return EXIT_FAILURE;
     }
 
     // try to load and render main page
-    if (load_page(MAIN_PAGE, WINDOW_HEIGHT, WINDOW_WIDTH, data, terminal_data) == ERROR) {
+    if (load_page(MAIN_PAGE, WINDOW_HEIGHT, WINDOW_WIDTH, page_loader_data, terminal_data) == ERROR) {
         (void)close_terminal(terminal_data);
-        restore_terminal_attributes(&old_term);
-        release_page_loader_inner_data(data);
+        release_page_loader_inner_data(page_loader_data);
         show_cursor();
         return EXIT_FAILURE;
     }
@@ -95,31 +85,30 @@ int main()
         }
 
         page_t new_page = NO_PAGE;
-        data->terminal_signal = false;
+        page_loader_data->terminal_signal = false;
         if (command != NULL) {
-            new_page = find_page(current_page, command, data);
+            new_page = find_page(current_page, command, page_loader_data);
             if (new_page != NO_PAGE) {
                 current_page = new_page;
             } else {
-                data->terminal_signal = true;
+                page_loader_data->terminal_signal = true;
             }
         }
 
         free(command);
-        page_return_code_t load_page_return_code = load_page(current_page, WINDOW_HEIGHT, WINDOW_WIDTH, data, terminal_data);
+        page_return_code_t load_page_return_code = load_page(current_page, WINDOW_HEIGHT, WINDOW_WIDTH, page_loader_data, terminal_data);
 
         if (load_page_return_code == ERROR) {
             break;
         } else if (load_page_return_code == SUCCESS_GAME) {
             current_page = AFTER_GAME_PAGE;
-            if (load_page(AFTER_GAME_PAGE, WINDOW_HEIGHT, WINDOW_WIDTH, data, terminal_data) == ERROR) {
+            if (load_page(AFTER_GAME_PAGE, WINDOW_HEIGHT, WINDOW_WIDTH, page_loader_data, terminal_data) == ERROR) {
                 break;
             } 
         }
     }
 
-    restore_terminal_attributes(&old_term);
-    release_page_loader_inner_data(data);
+    release_page_loader_inner_data(page_loader_data);
 
     if (close_terminal(terminal_data) == -1) {
         show_cursor();
@@ -129,40 +118,4 @@ int main()
     put_empty_row(1);
     show_cursor();
     return EXIT_SUCCESS;
-}
-
-/**
- * @brief Initializes the terminal settings for interactive input.
- *
- * This function sets up the terminal settings for interactive input, disabling
- * canonical mode and echoing. It returns the original terminal settings which
- * can be restored later.
- *
- * @return The original struct termios settings before modification.
- */
-static struct termios init_termios()
-{
-    struct termios old_term, new_term;
-    tcgetattr(STDIN_FILENO, &old_term);
-
-    new_term = old_term;
-    new_term.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
-
-    return old_term;
-}
-
-/**
- * @brief Restores terminal attributes for a file descriptor.
- *
- * This function is used to restore terminal attributes for a specified
- * file descriptor. It takes a pointer to the termios structure containing
- * the original attributes and applies them to the terminal using the
- * tcsetattr() command with the TCSANOW flag.
- *
- * @param original_termios A pointer to the termios structure containing the original attributes.
- */
-static void restore_terminal_attributes(const struct termios *original_termios)
-{
-    tcsetattr(STDIN_FILENO, TCSANOW, original_termios);
 }

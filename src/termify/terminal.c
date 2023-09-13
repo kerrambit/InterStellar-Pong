@@ -27,9 +27,11 @@ static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage(void)
 static char* get_line(const char *filename, int buffer_size, int file_offset);
 static int clear_terminal_window(terminal_data_t *terminal_data, FILE *file);
 static int get_maximal_terminal_buffer_size(unsigned long current_line_size);
+static void restore_terminal_attributes(struct termios *original_termios);
 static int parse_newline(terminal_data_t *terminal_data, char **command);
 static int parse_backspace(terminal_data_t *terminal_data, FILE *file);
 static int handle_arrow_up_and_down(terminal_data_t *terminal_data);
+static struct termios init_termios();
 static bool check_character(char c);
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
@@ -85,6 +87,7 @@ terminal_data_t *enable_terminal(char *default_mess, terminal_output_mode_t defa
     data->curr_line = 0;
     data->lines_count_in_file = 0;
 
+    data->old_term = init_termios();
     return data;
 }
 
@@ -94,6 +97,8 @@ int close_terminal(terminal_data_t *terminal_data)
         resolve_error(FAILURE_OF_REMOVING_FILE);
         return -1;
     }
+
+    restore_terminal_attributes(&terminal_data->old_term);
 
     if (terminal_data != NULL) {
         free(terminal_data->terminal_default_mess);
@@ -147,6 +152,42 @@ int process_command(terminal_data_t *terminal_data, char c, char **command)
 
     fclose(file);
     return 0;
+}
+
+/**
+ * @brief Initializes the terminal settings for interactive input.
+ *
+ * This function sets up the terminal settings for interactive input, disabling
+ * canonical mode and echoing. It returns the original terminal settings which
+ * can be restored later.
+ *
+ * @return The original struct termios settings before modification.
+ */
+static struct termios init_termios()
+{
+    struct termios old_term, new_term;
+    tcgetattr(STDIN_FILENO, &old_term);
+
+    new_term = old_term;
+    new_term.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+
+    return old_term;
+}
+
+/**
+ * @brief Restores terminal attributes for a file descriptor.
+ *
+ * This function is used to restore terminal attributes for a specified
+ * file descriptor. It takes a pointer to the termios structure containing
+ * the original attributes and applies them to the terminal using the
+ * tcsetattr() command with the TCSANOW flag.
+ *
+ * @param original_termios A pointer to the termios structure containing the original attributes.
+ */
+static void restore_terminal_attributes(struct termios *original_termios)
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, original_termios);
 }
 
 /**
