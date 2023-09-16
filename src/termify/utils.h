@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "errors.h"
+#include "log.h"
 
 #define STR_EQ(_str1, _str2) (strcmp(_str1, _str2) == 0) ? true : false
 #define SQUARE(_num) (_num * _num)

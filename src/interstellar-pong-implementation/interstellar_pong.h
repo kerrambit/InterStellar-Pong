@@ -16,7 +16,7 @@
 #include <stdlib.h>
 
 #include "../termify/draw.h"
-#include "../termify/errors.h"
+#include "../termify/log.h"
 #include "levels.h"
 #include "materials.h"
 #include "../termify/page_loader.h"

@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 #include "termify/draw.h"
-#include "termify/errors.h"
+#include "termify/log.h"
 #include "termify/utils.h"
 #include "termify/page_loader.h"
 #include "termify/terminal.h"

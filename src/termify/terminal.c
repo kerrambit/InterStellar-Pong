@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "errors.h"
+#include "log.h"
 #include "terminal.h"
 #include "utils.h"
 

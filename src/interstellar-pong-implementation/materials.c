@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "../termify/errors.h"
+#include "../termify/log.h"
 #include "materials.h"
 #include "../termify/utils.h"
 

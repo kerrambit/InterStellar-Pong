@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "errors.h"
+#include "log.h"
 #include "draw.h"
 #include "utils.h"
 

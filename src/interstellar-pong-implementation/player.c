@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../termify/errors.h"
+#include "../termify/log.h"
 #include "player.h"
 #include "../termify/utils.h"
 

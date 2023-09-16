@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "draw.h"
-#include "errors.h"
+#include "log.h"
 #include "../interstellar-pong-implementation/interstellar_pong.h"
 #include "page_loader.h"
 #include "../interstellar-pong-implementation/paths.h"
