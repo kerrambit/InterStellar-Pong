@@ -22,14 +22,14 @@ static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x
 static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_table_t *levels, materials_table_t *materials, int width, int height);
 static material_type_t count_meteor_material_from_level(level_row_t level);
 static void simulate_enemy_paddle_movement(rectangle_t *enemy, rectangle_t *ball, px_t height);
-static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter);
+static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter, const char *file_path);
 static void handle_ball_and_paddle_collision(rectangle_t *ball, rectangle_t *paddle);
 static void handle_ball_and_meteor_collision(rectangle_t *meteor, game_t *game);
 static int compute_cumulative_distribution(const int *probabilities, int count);
 static void set_meteor_shape(rectangle_t *meteor, materials_table_t *materials);
 static void set_meteor_size(rectangle_t *meteor, materials_table_t *materials);
 static bool check_for_level_update(player_t *player, levels_table_t *levels);
-static bool convert_line_into_level_data(levels_table_t *table, char *line);
+static bool convert_line_into_level_data(levels_table_t *table, char *line, const char *file_path);
 static bool check_ball_boundary_collision(rectangle_t *ball, game_t *game);
 static void update_player_resources(rectangle_t *meteor, player_t *player);
 static int get_index_based_on_material_type(material_type_t material);
@@ -72,7 +72,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
 {
     game_t *game = malloc(sizeof(game_t));
     if (game == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -83,7 +83,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     game->game_ticks = 0;
     game->enemy = create_player("enemy", 0, 0, 0, 0, 0);
     if (game->enemy == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         free(game);
         return NULL;
     } 
@@ -95,7 +95,7 @@ game_t *init_game(player_t *player, px_t height, px_t width)
     }
 
     if (game->player == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         free(game->enemy);
         free(game);
         return NULL;
@@ -153,7 +153,7 @@ scene_t *init_scene(game_t *game)
 {
     scene_t *scene = create_scene();
     if (scene == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -265,19 +265,19 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
 
     *materials_table = create_materials_table();
     if (materials_table == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
 
     *levels_table = create_levels_table();
     if (levels_table == NULL) {
         release_materials_table(*materials_table);
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
 
     if (access(file_path, F_OK) != 0) {
-        resolve_error(MISSING_DATA_FILE);
+        resolve_error(MISSING_DATA_FILE, file_path);
         release_materials_table(*materials_table);
         release_levels_table(*levels_table);
         return false;
@@ -285,7 +285,7 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
 
     FILE* file = fopen(file_path, "r");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, file_path);
         release_materials_table(*materials_table);
         release_levels_table(*levels_table);
         return false;
@@ -306,12 +306,12 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
 
         bool converting_return_code;
         if (counter < 4) {
-            converting_return_code = convert_line_into_material_data(*materials_table, line, counter);
+            converting_return_code = convert_line_into_material_data(*materials_table, line, counter, file_path);
         } else if (counter > 3 && counter < 8) {
-            converting_return_code = convert_line_into_level_data(*levels_table, line);
+            converting_return_code = convert_line_into_level_data(*levels_table, line, file_path);
         } else {
             converting_return_code = false;
-            resolve_error(INVALID_DATA_IN_FILE);
+            resolve_error(INVALID_DATA_IN_FILE, file_path);
         }
 
         if (!converting_return_code) {
@@ -328,7 +328,7 @@ bool load_extern_game_data(const char *file_path, materials_table_t **materials_
     fclose(file);
 
     if (counter != 8) {
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         release_materials_table(*materials_table);
         release_levels_table(*levels_table);
         return false;
@@ -617,7 +617,7 @@ static void set_meteor_properties(rectangle_t *meteor, int player_level, levels_
  * @param counter The counter indicating the position of the material data.
  * @return true if the conversion and addition are successful, false otherwise.
  */
-static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter)
+static bool convert_line_into_material_data(materials_table_t *table, char *line, int counter, const char *file_path)
 {
     const char* DELIMITER = ";";
 
@@ -628,35 +628,35 @@ static bool convert_line_into_material_data(materials_table_t *table, char *line
     token = strtok(line_copy, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_size_1_px_t)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_size_2_px_t)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_rectangle_shape)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_square_shape)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     // check that line is completely read
     if (strtok(NULL, DELIMITER) != NULL) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
@@ -676,7 +676,7 @@ static bool convert_line_into_material_data(materials_table_t *table, char *line
  * @param line The line containing level data to be converted.
  * @return true if the conversion and addition are successful, false otherwise.
  */
-static bool convert_line_into_level_data(levels_table_t *table, char *line)
+static bool convert_line_into_level_data(levels_table_t *table, char *line, const char *file_path)
 {
     const char* DELIMITER = ";";
 
@@ -687,63 +687,63 @@ static bool convert_line_into_level_data(levels_table_t *table, char *line)
     token = strtok(line_copy, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &stone_request)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &copper_request)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &iron_request)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &gold_request)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_stone)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_copper)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_iron)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     token = strtok(NULL, DELIMITER);
     if (token == NULL || !convert_string_2_int(token, &prob_gold)) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
     // check that line is completely read
     if (strtok(NULL, DELIMITER) != NULL) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 
@@ -751,7 +751,7 @@ static bool convert_line_into_level_data(levels_table_t *table, char *line)
 
     level_row_t level_row = create_level_row(stone_request, copper_request, iron_request, gold_request, prob_stone, prob_copper, prob_iron, prob_gold);
     if (add_level(table, level_row) == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
     return true;
@@ -1024,13 +1024,13 @@ static bool create_rectangle_and_add_it_to_scene(scene_t *scene, px_t position_x
 {
     rectangle_t *object = create_rectangle(position_x, position_y, width, height, x_speed, y_speed, colour, name);
     if (object == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
 
     if (add_to_scene(scene, object) == NULL) {
         release_scene(scene);
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
 
@@ -1280,7 +1280,7 @@ static char *get_name(rectangle_t *object)
 {
     char *name = malloc(strlen(object->name) + 1);
     if (name == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 

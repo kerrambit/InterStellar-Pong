@@ -87,9 +87,10 @@ void release_player(player_t *player);
  * based on the parsed information.
  *
  * @param string The input string containing player data.
+ * @param file_path Path to the file.
  * @return A pointer to the newly created player instance, or NULL on failure.
  */
-player_t *create_player_from_string(char* string);
+player_t *create_player_from_string(char* string, const char *file_path);
 
 /**
  * @brief Creates an array to hold player instances.

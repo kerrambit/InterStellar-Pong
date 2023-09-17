@@ -7,9 +7,6 @@ print_red() {
 if command -v valgrind &> /dev/null; then
 
   if [ "$1" == "debug" ] || [ "$1" == "DEBUG" ] || [ "$1" == "d" ] || [ "$1" == "D" ]; then
-    if [ ! -d "logs" ]; then
-        mkdir "logs"
-    fi
     valgrind --leak-check=full --show-reachable=yes --track-origins=yes ./InterStellar-Pong.app 2> logs/debug.log
     echo -e "Debug data are to be found in "logs/debug.log"."
   else

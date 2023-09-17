@@ -22,7 +22,7 @@ static bool add_to_terminal_file_cursor_storage(terminal_file_cursor_storage_t *
 static terminal_cursor_duo_t create_terminal_cursor_duo(int cursor_offset, int line_length);
 static char* get_last_line(char *filename, terminal_data_t *terminal_data, int buffer_size);
 static void release_terminal_file_cursor_storage(terminal_file_cursor_storage_t *storage);
-static int write_character_into_file(char c, FILE *file, unsigned long line_length);
+static int write_character_into_file(char c, FILE *file, unsigned long line_length, const char *file_path);
 static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage(void);
 static char* get_line(const char *filename, int buffer_size, int file_offset);
 static int clear_terminal_window(terminal_data_t *terminal_data, FILE *file);
@@ -40,14 +40,14 @@ terminal_data_t *enable_terminal(char *default_mess, terminal_output_mode_t defa
 {
     if (access(TERMINAL_FILE_PATH, F_OK) == 0) {
         if (remove(TERMINAL_FILE_PATH) != 0) {
-            resolve_error(FAILURE_OF_REMOVING_FILE);
+            resolve_error(FAILURE_OF_REMOVING_FILE, TERMINAL_FILE_PATH);
             return NULL;
         }
     }
 
     FILE* file = fopen(TERMINAL_FILE_PATH, "w");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, TERMINAL_FILE_PATH);
         return NULL;
     }
 
@@ -55,21 +55,21 @@ terminal_data_t *enable_terminal(char *default_mess, terminal_output_mode_t defa
 
     terminal_data_t *data = malloc(sizeof(terminal_data_t));
     if (data == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
     data->is_terminal_enabled = true;
     data->terminal_default_mess = strdup(default_mess);
     if (data->terminal_default_mess == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         free(data);
         return NULL;
     }
     data->terminal_default_mess_mode = default_mess_mode;
     data->terminal_special_flag_default_mess = strdup(special_flag_default_mess);
     if (data->terminal_special_flag_default_mess == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         free(data->terminal_default_mess);
         free(data);
         return NULL;
@@ -94,7 +94,7 @@ terminal_data_t *enable_terminal(char *default_mess, terminal_output_mode_t defa
 int close_terminal(terminal_data_t *terminal_data)
 {
     if (remove(TERMINAL_FILE_PATH) != 0) {
-        resolve_error(FAILURE_OF_REMOVING_FILE);
+        resolve_error(FAILURE_OF_REMOVING_FILE, TERMINAL_FILE_PATH);
         return -1;
     }
 
@@ -121,13 +121,13 @@ int process_command(terminal_data_t *terminal_data, char c, char **command)
     }
 
     if (!terminal_data->is_terminal_enabled) {
-        resolve_error(INACTIVE_TERMINAL);
+        resolve_error(INACTIVE_TERMINAL, NULL);
         return -1;
     }
 
     FILE* file = fopen(TERMINAL_FILE_PATH, "a");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, TERMINAL_FILE_PATH);
         return -1;
     }
 
@@ -137,7 +137,7 @@ int process_command(terminal_data_t *terminal_data, char c, char **command)
         return parse_backspace_return_code;
     }
 
-    if (write_character_into_file(c, file, terminal_data->curr_file_line_size) == -1) {
+    if (write_character_into_file(c, file, terminal_data->curr_file_line_size, TERMINAL_FILE_PATH) == -1) {
         fclose(file);
         return -1;
     }
@@ -202,15 +202,15 @@ static void restore_terminal_attributes(struct termios *original_termios)
  * @return 0 if the character is successfully written to the file.
  * @return -1 if an error occurs during the write operation.
  */
-static int write_character_into_file(char c, FILE *file, unsigned long line_length)
+static int write_character_into_file(char c, FILE *file, unsigned long line_length, const char *file_path)
 {
     if (line_length + 1 >= TERMINAL_LINE_LENGTH_HARD_LIMIT) {
-        resolve_error(TOO_LONG_INPUT);
+        resolve_error(TOO_LONG_INPUT, NULL);
         return -1;
     }
 
     if (fputc(c, file) == EOF) {
-        resolve_error(CORRUPTED_WRITE_TO_FILE);
+        resolve_error(CORRUPTED_WRITE_TO_FILE, file_path);
         return -1;
     }
 
@@ -220,13 +220,13 @@ static int write_character_into_file(char c, FILE *file, unsigned long line_leng
 int render_terminal(terminal_data_t *terminal_data, px_t line_width, bool special_flag, char *volunatary_mess, terminal_output_mode_t mode)
 {
     if (!terminal_data->is_terminal_enabled) {
-        resolve_error(INACTIVE_TERMINAL);
+        resolve_error(INACTIVE_TERMINAL, NULL);
         return -1;
     }
 
     FILE* file = fopen(TERMINAL_FILE_PATH, "rb");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, TERMINAL_FILE_PATH);
         return -1;
     }
 
@@ -327,7 +327,7 @@ static int handle_arrow_up_and_down(terminal_data_t *terminal_data)
 
     FILE* file = fopen(TERMINAL_FILE_PATH, "a");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, TERMINAL_FILE_PATH);
         return -1;
     }
 
@@ -380,7 +380,7 @@ static terminal_file_cursor_storage_t *create_terminal_file_cursor_storage()
 
     terminal_file_cursor_storage_t *storage = malloc(sizeof(terminal_file_cursor_storage_t));
     if (storage == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -495,7 +495,7 @@ static int parse_newline(terminal_data_t *terminal_data, char **command)
 
     *command = malloc(strlen(line) + 1);
     if (*command == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         free(line);
         return -1;
     }
@@ -524,12 +524,12 @@ static int parse_backspace(terminal_data_t *terminal_data, FILE *file)
     if (terminal_data->curr_file_cursor > 0 && terminal_data->curr_file_line_size > 0) {
 
         if (fseek(file, -1, SEEK_END) != 0) {
-            resolve_error(GENERAL_IO_ERROR);
+            resolve_error(GENERAL_IO_ERROR, "invalid operation with function \'fseek()\'.");
             return -1;
         }
 
         if (ftruncate(fileno(file), ftell(file)) != 0) {
-            resolve_error(GENERAL_IO_ERROR);
+            resolve_error(GENERAL_IO_ERROR, "invalid operation with function \'ftruncate()\'.");
             return -1;
         }
 
@@ -574,19 +574,19 @@ static char* get_line(const char *filename, int buffer_size, int file_offset)
 {
     char *line = calloc(buffer_size + 1, sizeof(char));
     if (line == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
     FILE* file = fopen(filename, "rb");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, filename);
         free(line);
         return NULL;
     }
 
     if (fseek(file, file_offset, SEEK_SET) != 0) {
-        resolve_error(GENERAL_IO_ERROR);
+        resolve_error(GENERAL_IO_ERROR, "invalid operation with function \'fseek()\'.");
         free(line);
         fclose(file);
         return NULL;

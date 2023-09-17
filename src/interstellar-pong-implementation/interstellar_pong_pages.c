@@ -80,7 +80,7 @@ page_t find_interstellar_page(page_t current_page, const char *command, page_loa
             if (name == NULL) {
                 release_player(data->player_choosen_to_game);
                 data->player_choosen_to_game = NULL;
-                resolve_error(MEM_ALOC_FAILURE);
+                resolve_error(MEM_ALOC_FAILURE, NULL);
                 return ERROR_PAGE;
             }
             release_player(data->player_choosen_to_game);
@@ -551,7 +551,7 @@ static players_array_t *load_players(const char* file_path)
 
     FILE* file = fopen(file_path, "r");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, file_path);
         return NULL;
     }
 
@@ -565,7 +565,7 @@ static players_array_t *load_players(const char* file_path)
             continue;
         }
 
-        player_t *player = create_player_from_string(line);
+        player_t *player = create_player_from_string(line, file_path);
         if (player == NULL) {
             release_players_array(players);
             free(line);
@@ -574,7 +574,7 @@ static players_array_t *load_players(const char* file_path)
         }
 
         if (add_to_players_array(players, player) == NULL) {
-            resolve_error(MEM_ALOC_FAILURE);
+            resolve_error(MEM_ALOC_FAILURE, NULL);
             release_players_array(players);
             free(line);
             fclose(file);
@@ -700,7 +700,7 @@ static player_t *find_player(const char *name, const char *file_path)
     
     release_players_array(players);
     if (player_copy == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -757,12 +757,12 @@ static page_t handle_save_and_play(page_loader_inner_data_t *data)
     data->curr_player_name = NULL;
 
     if (data->player_choosen_to_game == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return ERROR_PAGE;
     }
 
     if (write_player_to_file(data->player_choosen_to_game, PLAYERS_DATA_PATH) == -1) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return ERROR_PAGE;
     }
     return GAME_PAGE;
@@ -826,7 +826,7 @@ static bool is_name_valid(const char *name, page_loader_inner_data_t *data)
 
     data->curr_player_name = malloc(strlen(name) + 1);
     if (data->curr_player_name == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
 
@@ -845,7 +845,7 @@ static bool is_name_unique(const char *name, page_loader_inner_data_t *data)
 {
     players_array_t *players = load_players(PLAYERS_DATA_PATH);
     if (players == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return false;
     }
 
@@ -1023,19 +1023,19 @@ static int update_players_stats(player_t *target_player, const char *file_path)
     }
 
     if (access(file_path, F_OK) != 0) {
-        resolve_error(MISSING_DATA_FILE);
+        resolve_error(MISSING_DATA_FILE, file_path);
         return -1;
     }
 
     FILE* file = fopen(file_path, "r");
     if (file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, file_path);
         return -1;
     }
 
     FILE* temp_file = fopen("_temp.data", "w");
     if (temp_file == NULL) {
-        resolve_error(UNOPENABLE_FILE);
+        resolve_error(UNOPENABLE_FILE, file_path);
         fclose(file);
         return -1;
     }
@@ -1051,7 +1051,7 @@ static int update_players_stats(player_t *target_player, const char *file_path)
             continue;
         }
 
-        player_t *player = create_player_from_string(line);
+        player_t *player = create_player_from_string(line, file_path);
         if (player == NULL) {
             free(line);
             fclose(file);
@@ -1082,18 +1082,18 @@ static int update_players_stats(player_t *target_player, const char *file_path)
     fclose(temp_file);
 
     if (remove(file_path) != 0) {
-        resolve_error(FAILURE_OF_REMOVING_FILE);
+        resolve_error(FAILURE_OF_REMOVING_FILE, file_path);
         return -1;
     }
 
     if (rename("_temp.data", file_path) != 0) {
-        resolve_error(FAILURE_OF_RENAMING_FILE);
+        resolve_error(FAILURE_OF_RENAMING_FILE, file_path);
         return -1;
     }
 
     if (!target_found) {
         if (write_player_to_file(target_player, "_temp.data") == -1) {
-            resolve_error(UNOPENABLE_FILE);
+            resolve_error(UNOPENABLE_FILE, file_path);
             return -1;
         }
     }
@@ -1175,7 +1175,7 @@ static void display_resources(player_t *player, levels_table_t *levels, int widt
     }
 
     if (string == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         put_text("Memory allocation error occured. Data about your resources could not be loaded.", width, CENTER);
         return;
     }

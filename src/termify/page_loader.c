@@ -82,7 +82,7 @@ page_loader_inner_data_t *create_page_loader_inner_data()
 {
     page_loader_inner_data_t *data = malloc(sizeof(page_loader_inner_data_t));
     if (data == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 

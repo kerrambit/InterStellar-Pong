@@ -54,7 +54,7 @@ char *create_string(const char *format, ...)
 
     char *string = (char *)malloc(size + 1);
     if (string == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         va_end(args);
         return NULL;
     }

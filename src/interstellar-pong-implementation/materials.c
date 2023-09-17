@@ -16,7 +16,7 @@ materials_table_t *create_materials_table()
 
     materials_table_t *table = malloc(sizeof(materials_table_t));
     if (table == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -26,7 +26,7 @@ materials_table_t *create_materials_table()
 
     if (table->materials == NULL) {
         free(table);
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -38,7 +38,7 @@ materials_table_t *add_material(materials_table_t *table, material_row_t materia
     const int GROWTH_FACTOR = 2;
 
     if (table == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -46,7 +46,7 @@ materials_table_t *add_material(materials_table_t *table, material_row_t materia
         table->length *= GROWTH_FACTOR;
         material_row_t *new_materials_table = realloc(table->materials, sizeof(material_row_t) * table->length);
         if (new_materials_table == NULL) {
-            resolve_error(MEM_ALOC_FAILURE);
+            resolve_error(MEM_ALOC_FAILURE, NULL);
             return NULL;
         }
         table->materials = new_materials_table;
@@ -68,7 +68,7 @@ const char *convert_material_row_2_string(material_row_t material_row)
 {
     const char *string = create_string("Material type: %s, size 1_px_t probability: %d, size 2_px_t probability: %d, rectangle shape probability: %d, square shape probability: %d", convert_material_type_2_string(material_row.material_type), material_row.prob_size_1_px_t, material_row.prob_size_2_px_t, material_row.prob_rectangle_shape, material_row.prob_square_shape);
     if (string == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
     return string;

@@ -187,7 +187,7 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
 {
     pixel_buffer_t *pixel_buffer = malloc(sizeof(pixel_buffer_t));
     if (pixel_buffer == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -195,7 +195,7 @@ pixel_buffer_t *create_pixel_buffer(px_t height, px_t width)
     pixel_buffer->buff = calloc(height * width, sizeof(unsigned char));
 
     if (pixel_buffer->buff == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         free(pixel_buffer);
         return NULL;
     }

@@ -46,12 +46,13 @@
  */
 int main() 
 {   
+    log_message(LOG_FILE_PATH, "application Interstellar-Pong has started.");
     hide_cursor();
 
     // enable terminal
     terminal_data_t *terminal_data;
     if ((terminal_data = enable_terminal("Enter your commands.", TERMINAL_LOG, "Unknown command.", TERMINAL_WARNING)) == NULL) {
-        resolve_error(BROKEN_TERMINAL);
+        resolve_error(BROKEN_TERMINAL, NULL);
         show_cursor();
         return EXIT_FAILURE;
     }
@@ -117,5 +118,8 @@ int main()
 
     put_empty_row(1);
     show_cursor();
+
+    log_message(LOG_FILE_PATH, "application Interstellar-Pong has been successfully terminated.");
+
     return EXIT_SUCCESS;
 }

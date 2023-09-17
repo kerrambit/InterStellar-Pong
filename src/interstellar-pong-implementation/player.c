@@ -12,7 +12,7 @@
 
 // ---------------------------------- STATIC DECLARATIONS--------------------------------------- //
 
-static bool save_number(char *token, int *data_holder);
+static bool save_number(char *token, int *data_holder, const char *file_path);
 
 // ----------------------------------------- PROGRAM-------------------------------------------- //
 
@@ -47,7 +47,7 @@ void release_player(player_t *player)
     }
 }
 
-player_t *create_player_from_string(char* string)
+player_t *create_player_from_string(char* string, const char *file_path)
 {
     const char* DELIMITER = ";";
 
@@ -59,45 +59,45 @@ player_t *create_player_from_string(char* string)
     token = strtok(line_copy, DELIMITER);
     if (token == NULL) {
         free(line_copy);
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return NULL;
     }
     char *name = strdup(token);
 
     // check level
     token = strtok(NULL, DELIMITER);
-    if (!save_number(token, &level)) {
+    if (!save_number(token, &level, file_path)) {
         CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check stone
     token = strtok(NULL, DELIMITER);
-    if (!save_number(token, &stone)) {
+    if (!save_number(token, &stone, file_path)) {
         CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check copper
     token = strtok(NULL, DELIMITER);
-    if (!save_number(token, &copper)) {
+    if (!save_number(token, &copper, file_path)) {
         CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check iron
     token = strtok(NULL, DELIMITER);
-    if (!save_number(token, &iron)) {
+    if (!save_number(token, &iron, file_path)) {
         CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check gold
     token = strtok(NULL, DELIMITER);
     strip_newline(token);
-    if (!save_number(token, &gold)) {
+    if (!save_number(token, &gold, file_path)) {
         CLEAN_AND_RETURN_WITH_FAILURE;
     }
 
     // check that line is completely read
     if (strtok(NULL, DELIMITER) != NULL) {
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         CLEAN_AND_RETURN_WITH_FAILURE;
     }
     
@@ -105,7 +105,7 @@ player_t *create_player_from_string(char* string)
     free(line_copy); free(name);
 
     if (player == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -159,6 +159,7 @@ player_t *add_to_players_array(players_array_t *players_array, player_t *player)
         players_array->length *= GROWTH_FACTOR;
         player_t **new_players_array = realloc(players_array->players, sizeof(player_t*) * players_array->length);
         if (new_players_array == NULL) {
+            resolve_error(MEM_ALOC_FAILURE, NULL);
             return NULL;
         }
         players_array->players = new_players_array;
@@ -179,10 +180,10 @@ player_t *add_to_players_array(players_array_t *players_array, player_t *player)
  * @param data_holder A pointer to an integer to store the converted value.
  * @return Returns true if the conversion and saving are successful, or false otherwise.
  */
-static bool save_number(char *token, int *data_holder)
+static bool save_number(char *token, int *data_holder, const char *file_path)
 {
     if (token == NULL || !convert_string_2_int(token, data_holder) || *data_holder < 0) {
-        resolve_error(INVALID_DATA_IN_FILE);
+        resolve_error(INVALID_DATA_IN_FILE, file_path);
         return false;
     }
 

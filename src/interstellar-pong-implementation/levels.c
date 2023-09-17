@@ -16,7 +16,7 @@ levels_table_t *create_levels_table()
 
     levels_table_t *table = malloc(sizeof(levels_table_t));
     if (table == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -26,7 +26,7 @@ levels_table_t *create_levels_table()
 
     if (table->levels == NULL) {
         free(table);
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -38,7 +38,7 @@ levels_table_t *add_level(levels_table_t *table, level_row_t level)
     const int GROWTH_FACTOR = 2;
 
     if (table == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
 
@@ -46,7 +46,7 @@ levels_table_t *add_level(levels_table_t *table, level_row_t level)
         table->length *= GROWTH_FACTOR;
         level_row_t *new_levels_table = realloc(table->levels, sizeof(level_row_t) * table->length);
         if (new_levels_table == NULL) {
-            resolve_error(MEM_ALOC_FAILURE);
+            resolve_error(MEM_ALOC_FAILURE, NULL);
             return NULL;
         }
         table->levels = new_levels_table;
@@ -68,7 +68,7 @@ const char *convert_level_row_2_string(level_row_t level_row)
 {
     const char *string = create_string("stone request: %d, copper request: %d, iron request: %d, gold request: %d, stone spawn probability: %d, copper spawn probability: %d, iron spawn probability: %d, gold spawn probability: %d", level_row.stone_request, level_row.copper_request, level_row.iron_request, level_row.gold_request, level_row.prob_stone, level_row.prob_copper, level_row.prob_iron, level_row.prob_gold);
     if (string == NULL) {
-        resolve_error(MEM_ALOC_FAILURE);
+        resolve_error(MEM_ALOC_FAILURE, NULL);
         return NULL;
     }
     return string;
