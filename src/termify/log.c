@@ -7,11 +7,6 @@
 #include "log.h"
 #include "utils.h"
 
-// ---------------------------------------- MACROS --------------------------------------------- //
-
-#define PRINT_ERROR_MESS(err_mess) fprintf(stderr, "\033[31m[ERROR] - %s.\033[0m\n", err_mess); break
-#define PRINT_WARNING_MESS(err_mess) fprintf(stderr, "\033[33m[WARNING]  %s.\033[0m\n", err_mess); break
-
 // ------------------------------------ GLOBAL VARIABLE----------------------------------------- //
 
 /**
